@@ -1,0 +1,98 @@
+[
+  {
+    "name": "Hypixel",
+    "address": "mc.hypixel.net",
+    "description": "Large minigame network with SkyBlock, BedWars, and more.",
+    "category": "Minigames",
+    "website": "https://hypixel.net",
+    "tags": ["pvp", "skyblock", "bedwars", "network"]
+  },
+  {
+    "name": "CubeCraft",
+    "address": "play.cubecraft.net",
+    "description": "Competitive minigames and team modes.",
+    "category": "Minigames",
+    "website": "https://www.cubecraft.net",
+    "tags": ["pvp", "eggwars", "parkour"]
+  },
+  {
+    "name": "Mineplex",
+    "address": "us.mineplex.com",
+    "description": "Classic server featuring arcade game modes.",
+    "category": "Arcade",
+    "website": "https://www.mineplex.com",
+    "tags": ["arcade", "party", "classic"]
+  },
+  {
+    "name": "The Hive",
+    "address": "play.hivemc.com",
+    "description": "Polished social minigame experience.",
+    "category": "Minigames",
+    "website": "https://playhive.com",
+    "tags": ["minigames", "casual", "social"]
+  },
+  {
+    "name": "MCC Island",
+    "address": "play.mccisland.net",
+    "description": "Fast team PvP and party games.",
+    "category": "Minigames",
+    "website": "https://mccisland.net",
+    "tags": ["pvp", "party", "movement"]
+  },
+  {
+    "name": "Wynncraft",
+    "address": "play.wynncraft.com",
+    "description": "Massive RPG server with quests and classes.",
+    "category": "RPG",
+    "website": "https://wynncraft.com",
+    "tags": ["rpg", "quests", "mmorpg"]
+  },
+  {
+    "name": "Pixelmon Reforged",
+    "address": "play.pixelmonrealms.com",
+    "description": "Pokemon-inspired modded multiplayer.",
+    "category": "Modded",
+    "website": "https://pixelmonrealms.com",
+    "tags": ["pixelmon", "modded", "survival"]
+  },
+  {
+    "name": "Minewind",
+    "address": "bw.minewind.net",
+    "description": "Hardcore anarchy style gameplay.",
+    "category": "Anarchy",
+    "website": "https://minewind.com",
+    "tags": ["anarchy", "hardcore", "pvp"]
+  },
+  {
+    "name": "Complex Gaming",
+    "address": "hub.mc-complex.com",
+    "description": "Popular Pixelmon and prison networks.",
+    "category": "Network",
+    "website": "https://mc-complex.com",
+    "tags": ["pixelmon", "prison", "network"]
+  },
+  {
+    "name": "Lifesteal SMP",
+    "address": "lifesteal.smp-server.com",
+    "description": "PvP-focused survival where kills steal hearts.",
+    "category": "Survival",
+    "website": "",
+    "tags": ["smp", "pvp", "lifesteal"]
+  },
+  {
+    "name": "ManaCube",
+    "address": "play.manacube.com",
+    "description": "Skyblock, parkour, and events.",
+    "category": "Network",
+    "website": "https://manacube.com",
+    "tags": ["skyblock", "parkour", "events"]
+  },
+  {
+    "name": "InsanityCraft",
+    "address": "play.insanitycraft.net",
+    "description": "Survival and skyblock network.",
+    "category": "Survival",
+    "website": "https://insanitycraft.net",
+    "tags": ["survival", "economy", "skyblock"]
+  }
+]
