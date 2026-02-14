@@ -1,21 +1,87 @@
+import java.util.Properties
+
 plugins {
-	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+	id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}" apply false
 	id 'maven-publish'
 }
 
-version = project.mod_version
+def mcProfile = (findProperty("mc_profile") ?: "current").toString()
+def profilesDir = file("gradle/profiles")
+def profileFile = new File(profilesDir, "${mcProfile}.properties")
+if (!profileFile.exists()) {
+	throw new GradleException("Missing build profile: ${profileFile}")
+}
+
+def profileProperties = new Properties()
+profileFile.withInputStream { profileProperties.load(it) }
+def cliProperties = gradle.startParameter.projectProperties
+
+def readProfileProperty = { String key ->
+	def override = cliProperties.get(key)
+	def value = override != null ? override.toString().trim() : profileProperties.getProperty(key, "").trim()
+	if (value.isBlank()) {
+		throw new GradleException("Missing required property '${key}' in ${profileFile}")
+	}
+	return value
+}
+
+def loomMode = readProfileProperty("loom_mode")
+if (loomMode == "remap") {
+	apply plugin: 'net.fabricmc.fabric-loom-remap'
+} else if (loomMode == "official") {
+	apply plugin: 'net.fabricmc.fabric-loom'
+} else {
+	throw new GradleException("Unsupported loom_mode '${loomMode}' in ${profileFile}; expected 'official' or 'remap'.")
+}
+
+def minecraftVersion = readProfileProperty("minecraft_version")
+def loaderVersion = readProfileProperty("loader_version")
+def fabricApiVersion = readProfileProperty("fabric_api_version")
+def minecraftDependency = readProfileProperty("minecraft_dependency")
+def loaderDependency = readProfileProperty("fabric_loader_dependency")
+def javaMinVersion = readProfileProperty("java_min_version")
+def javaRelease = Integer.parseInt(readProfileProperty("java_release"))
+def mixinCompatibilityLevel = (
+	cliProperties.get("mixin_compatibility_level") != null
+		? cliProperties.get("mixin_compatibility_level").toString().trim()
+		: profileProperties.getProperty("mixin_compatibility_level", "JAVA_${javaMinVersion}").trim()
+)
+if (mixinCompatibilityLevel.isBlank()) {
+	throw new GradleException("Missing required property 'mixin_compatibility_level' in ${profileFile}")
+}
+def profileTag = mcProfile.replaceAll("[^A-Za-z0-9._-]", "-")
+def profileJavaDir = file("src/profiles/${mcProfile}/java")
+
+version = mcProfile == "current" ? project.mod_version : "${project.mod_version}+${profileTag}"
 group = project.maven_group
 
 base {
-	archivesName = project.archives_base_name
+	archivesName = mcProfile == "current" ? project.archives_base_name : "${project.archives_base_name}-${profileTag}"
 }
 
 repositories {
-	// Add repositories to retrieve artifacts from in here.
-	// You should only use this when depending on other mods because
-	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
-	// for more information about repositories.
+}
+
+sourceSets {
+	main {
+		if (profileJavaDir.exists()) {
+			java.srcDir(profileJavaDir)
+			def overriddenPaths = fileTree(profileJavaDir)
+				.matching { include("**/*.java") }
+				.files
+				.collect { it.absolutePath.replace('\\', '/').replace(profileJavaDir.absolutePath.replace('\\', '/') + '/', '') }
+				.toSet()
+			java.exclude { details ->
+				def relativePath = details.path.replace('\\', '/')
+				if (!overriddenPaths.contains(relativePath)) {
+					return false
+				}
+				def absolutePath = details.file.absolutePath.replace('\\', '/')
+				return absolutePath.contains("/src/main/java/")
+			}
+		}
+	}
 }
 
 fabricApi {
@@ -25,60 +91,62 @@ fabricApi {
 }
 
 dependencies {
-	// To change the versions see the gradle.properties file
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings loom.officialMojangMappings()
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-	// Fabric API. This is technically optional, but you probably want it anyway.
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	
+	minecraft "com.mojang:minecraft:${minecraftVersion}"
+	if (loomMode == "remap") {
+		mappings loom.officialMojangMappings()
+		modImplementation "net.fabricmc:fabric-loader:${loaderVersion}"
+		modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+	} else {
+		implementation "net.fabricmc:fabric-loader:${loaderVersion}"
+		implementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+	}
 }
 
 processResources {
 	inputs.property "version", project.version
+	inputs.property "minecraft_dependency", minecraftDependency
+	inputs.property "java_min_version", javaMinVersion
+	inputs.property "fabric_loader_dependency", loaderDependency
+	inputs.property "mixin_compatibility_level", mixinCompatibilityLevel
 
 	filesMatching("fabric.mod.json") {
-		expand "version": inputs.properties.version
+		expand(
+			"version": inputs.properties.version,
+			"minecraft_dependency": inputs.properties.minecraft_dependency,
+			"java_min_version": inputs.properties.java_min_version,
+			"fabric_loader_dependency": inputs.properties.fabric_loader_dependency
+		)
+	}
+	filesMatching("better-server-list.mixins.json") {
+		expand("mixin_compatibility_level": inputs.properties.mixin_compatibility_level)
 	}
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+	it.options.release = javaRelease
 }
 
 java {
-	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-	// if it is present.
-	// If you remove this line, sources will not be generated.
 	withSourcesJar()
-
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
+	sourceCompatibility = JavaVersion.toVersion(javaRelease)
+	targetCompatibility = JavaVersion.toVersion(javaRelease)
 }
 
 jar {
 	inputs.property "archivesName", project.base.archivesName
-
 	from("LICENSE") {
 		rename { "${it}_${inputs.properties.archivesName}"}
 	}
 }
 
-// configure the maven publication
 publishing {
 	publications {
 		create("mavenJava", MavenPublication) {
-			artifactId = project.archives_base_name
+			artifactId = project.base.archivesName.get()
 			from components.java
 		}
 	}
 
-	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
 	repositories {
-		// Add repositories to publish to here.
-		// Notice: This block does NOT have the same function as the block in the top level.
-		// The repositories here will be used for publishing your artifact, not for
-		// retrieving dependencies.
 	}
 }

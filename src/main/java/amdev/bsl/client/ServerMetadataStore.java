@@ -121,7 +121,7 @@ public final class ServerMetadataStore {
 
 		try {
 			String content = Files.readString(FILE, StandardCharsets.UTF_8);
-			JsonElement parsed = JsonParser.parseString(content);
+			JsonElement parsed = new JsonParser().parse(content);
 			if (!parsed.isJsonObject()) {
 				return;
 			}

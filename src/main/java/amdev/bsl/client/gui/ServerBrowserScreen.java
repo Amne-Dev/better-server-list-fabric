@@ -4,13 +4,20 @@ import amdev.bsl.client.PublicServerCatalog;
 import amdev.bsl.client.ServerMetadataStore;
 import amdev.bsl.client.ServerOrdering;
 import amdev.bsl.mixin.client.JoinMultiplayerScreenInvoker;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.blaze3d.platform.NativeImage;
+import java.io.ByteArrayInputStream;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,7 +44,9 @@ import net.minecraft.world.item.Items;
 public final class ServerBrowserScreen extends Screen {
 	private static final int PAGE_SIZE = 8;
 	private static final int ROW_HEIGHT = 36;
-	private static final ItemStack LOADING_ICON = new ItemStack(Items.AMETHYST_SHARD);
+	private static final String MCSRSTAT_ICON_PREFIX = "https://api.mcsrvstat.us/icon/";
+	private static final String MCSRSTAT_ICON_PREFIX_HTTP = "http://api.mcsrvstat.us/icon/";
+	private static final String MINE_SPARK_STATUS_TEMPLATE = "https://srvstat.minespark.org/general/%s";
 	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
 		.followRedirects(HttpClient.Redirect.NORMAL)
 		.connectTimeout(Duration.ofSeconds(8))
@@ -62,6 +71,8 @@ public final class ServerBrowserScreen extends Screen {
 	private int buttonX;
 	private int buttonWidth;
 	private int listTop;
+	private ItemStack loadingIcon;
+	private long nextLoadingIconRetryAt;
 	private boolean loadingLive;
 	private CompletableFuture<PublicServerCatalog.LoadResult> liveLoadFuture;
 
@@ -77,6 +88,8 @@ public final class ServerBrowserScreen extends Screen {
 		this.filteredEntries.clear();
 		this.selected = null;
 		this.currentPage = 0;
+		this.loadingIcon = ItemStack.EMPTY;
+		this.nextLoadingIconRetryAt = 0L;
 
 		this.listTop = 46;
 		this.buttonWidth = Math.min(this.width - 20, Math.max(575, this.width - 40));
@@ -127,7 +140,7 @@ public final class ServerBrowserScreen extends Screen {
 			Button.builder(Component.literal("Open Website"), b -> this.bsl$openSelectedWebsite()).bounds(websiteX, controlsY, 110, 20).build()
 		);
 		this.refreshApiButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Reload API"), b -> this.bsl$loadLiveCatalog()).bounds(reloadX, controlsY, 100, 20).build()
+			Button.builder(Component.literal("Reload API"), b -> this.bsl$loadLiveCatalog(true)).bounds(reloadX, controlsY, 100, 20).build()
 		);
 		this.addRenderableWidget(
 			Button.builder(Component.literal("Done"), b -> this.minecraft.setScreen(this.parent)).bounds(doneX, controlsY, 75, 20).build()
@@ -136,7 +149,7 @@ public final class ServerBrowserScreen extends Screen {
 		this.loadingLive = true;
 		this.statusMessage = "Loading live server catalog...";
 		this.bsl$refreshFilteredEntries();
-		this.bsl$loadLiveCatalog();
+		this.bsl$loadLiveCatalog(false);
 	}
 
 	@Override
@@ -193,13 +206,21 @@ public final class ServerBrowserScreen extends Screen {
 	}
 
 	private void bsl$renderLoadingIndicator(GuiGraphics guiGraphics) {
-		float pulse = (float) ((Math.sin((Util.getMillis() % 1600L) / 1600.0 * Math.PI * 2.0) + 1.0) * 0.5);
+		float wave = (float) Math.sin((Util.getMillis() % 1600L) / 1600.0 * Math.PI * 2.0);
+		float pulse = (wave + 1.0f) * 0.5f;
 		int iconX = this.width / 2 - 8;
 		int iconY = this.listTop + PAGE_SIZE * ROW_HEIGHT / 2 - 8;
 
-		guiGraphics.renderItem(LOADING_ICON, iconX, iconY);
-		int overlayAlpha = ((int) ((1.0f - pulse) * 180.0f)) << 24;
-		guiGraphics.fill(iconX, iconY, iconX + 16, iconY + 16, overlayAlpha);
+		ItemStack icon = this.bsl$getLoadingIcon();
+		if (!icon.isEmpty()) {
+			guiGraphics.renderItem(icon, iconX, iconY);
+		} else {
+			this.bsl$renderFallbackIcon(guiGraphics, iconX, iconY, true);
+		}
+		int darkAlpha = ((int) ((1.0f - pulse) * 120.0f)) << 24;
+		int lightAlpha = ((int) (pulse * 70.0f)) << 24;
+		guiGraphics.fill(iconX, iconY, iconX + 16, iconY + 16, darkAlpha);
+		guiGraphics.fill(iconX, iconY, iconX + 16, iconY + 16, lightAlpha | 0x00FFFFFF);
 
 		int textAlpha = ((int) (140 + pulse * 115.0f)) << 24;
 		guiGraphics.drawCenteredString(this.font, "Loading...", this.width / 2, iconY + 24, textAlpha | 0xD8C8FF);
@@ -213,7 +234,38 @@ public final class ServerBrowserScreen extends Screen {
 			return;
 		}
 
-		guiGraphics.renderItem(LOADING_ICON, x, y);
+		ItemStack icon = this.bsl$getLoadingIcon();
+		if (!icon.isEmpty()) {
+			guiGraphics.renderItem(icon, x, y);
+		} else {
+			this.bsl$renderFallbackIcon(guiGraphics, x, y, false);
+		}
+	}
+
+	private ItemStack bsl$getLoadingIcon() {
+		if (this.loadingIcon != null && !this.loadingIcon.isEmpty()) {
+			return this.loadingIcon;
+		}
+
+		long now = Util.getMillis();
+		if (now < this.nextLoadingIconRetryAt) {
+			return ItemStack.EMPTY;
+		}
+
+		try {
+			this.loadingIcon = new ItemStack(Items.AMETHYST_SHARD);
+			return this.loadingIcon;
+		} catch (Exception ignored) {
+			this.nextLoadingIconRetryAt = now + 1000L;
+			return ItemStack.EMPTY;
+		}
+	}
+
+	private void bsl$renderFallbackIcon(GuiGraphics guiGraphics, int x, int y, boolean loading) {
+		int fillColor = loading ? 0xFF6C5D92 : 0xFF4B4F57;
+		int borderColor = loading ? 0xFFD8C8FF : 0xFF9AA0AA;
+		guiGraphics.fill(x, y, x + 16, y + 16, fillColor);
+		guiGraphics.renderOutline(x, y, 16, 16, borderColor);
 	}
 
 	private void bsl$refreshFilteredEntries() {
@@ -238,21 +290,40 @@ public final class ServerBrowserScreen extends Screen {
 		this.bsl$refreshActionButtons();
 	}
 
-	private void bsl$loadLiveCatalog() {
+	private void bsl$loadLiveCatalog(boolean forceRefresh) {
 		this.bsl$cancelLiveLoad();
+
+		if (!forceRefresh) {
+			PublicServerCatalog.LoadResult cached = PublicServerCatalog.getSessionCachedResult();
+			if (cached != null) {
+				this.loadingLive = false;
+				this.statusMessage = cached.fromLiveApi()
+					? "Loaded " + cached.entries().size() + " servers from session cache."
+					: "Using cached bundled catalog from this session.";
+				this.allEntries.clear();
+				this.allEntries.addAll(cached.entries());
+				this.filteredEntries.clear();
+				this.selected = null;
+				this.currentPage = 0;
+				this.bsl$refreshFilteredEntries();
+				return;
+			}
+		}
 
 		if (this.refreshApiButton != null) {
 			this.refreshApiButton.active = false;
 		}
 		this.loadingLive = true;
-		this.statusMessage = "Loading live server catalog...";
+		this.statusMessage = forceRefresh ? "Reloading live server catalog..." : "Loading live server catalog...";
 		this.allEntries.clear();
 		this.filteredEntries.clear();
 		this.selected = null;
 		this.currentPage = 0;
 		this.bsl$refreshFilteredEntries();
 
-		this.liveLoadFuture = PublicServerCatalog.loadPreferredAsync(this.minecraft.getResourceManager());
+		this.liveLoadFuture = forceRefresh
+			? PublicServerCatalog.reloadPreferredAsync(this.minecraft.getResourceManager())
+			: PublicServerCatalog.loadPreferredAsync(this.minecraft.getResourceManager());
 		this.liveLoadFuture.whenComplete((result, throwable) -> this.minecraft.execute(() -> {
 			if (this.minecraft == null || this.minecraft.screen != this) {
 				return;
@@ -427,21 +498,134 @@ public final class ServerBrowserScreen extends Screen {
 
 	private NativeImage bsl$downloadLogo(String logoUrl) {
 		try {
+			NativeImage directDataImage = this.bsl$decodeDataImage(logoUrl);
+			if (directDataImage != null) {
+				return directDataImage;
+			}
+
+			String mcsAddress = this.bsl$extractMcsrvstatAddress(logoUrl);
+			if (!mcsAddress.isEmpty()) {
+				NativeImage fallbackStatusIcon = this.bsl$downloadMinesparkStatusIcon(mcsAddress);
+				if (fallbackStatusIcon != null) {
+					return fallbackStatusIcon;
+				}
+			}
+
 			HttpRequest request = HttpRequest.newBuilder()
 				.GET()
 				.uri(URI.create(logoUrl))
 				.timeout(Duration.ofSeconds(8))
 				.header("Accept", "image/png,image/*")
-				.header("User-Agent", "better-server-list-fabric/1.0")
+				.header("User-Agent", "better-server-list-fabric/1.1")
 				.build();
 			HttpResponse<byte[]> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofByteArray());
 			if (response.statusCode() < 200 || response.statusCode() >= 300) {
 				return null;
 			}
-			return NativeImage.read(response.body());
+			return NativeImage.read(new ByteArrayInputStream(response.body()));
 		} catch (Exception exception) {
 			return null;
 		}
+	}
+
+	private NativeImage bsl$downloadMinesparkStatusIcon(String address) {
+		try {
+			String encodedAddress = URLEncoder.encode(address, StandardCharsets.UTF_8);
+			String endpoint = String.format(MINE_SPARK_STATUS_TEMPLATE, encodedAddress);
+			HttpRequest request = HttpRequest.newBuilder()
+				.GET()
+				.uri(URI.create(endpoint))
+				.timeout(Duration.ofSeconds(8))
+				.header("Accept", "application/json")
+				.header("User-Agent", "better-server-list-fabric/1.1")
+				.build();
+			HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+			if (response.statusCode() < 200 || response.statusCode() >= 300) {
+				return null;
+			}
+
+			JsonElement parsed = new JsonParser().parse(response.body());
+			if (!parsed.isJsonObject()) {
+				return null;
+			}
+
+			JsonObject object = parsed.getAsJsonObject();
+			JsonElement iconElement = object.get("icon");
+			if (iconElement == null || !iconElement.isJsonPrimitive()) {
+				return null;
+			}
+
+			return this.bsl$decodeDataImage(iconElement.getAsString());
+		} catch (Exception ignored) {
+			return null;
+		}
+	}
+
+	private NativeImage bsl$decodeDataImage(String dataUrl) {
+		if (dataUrl == null || !dataUrl.startsWith("data:image/")) {
+			return null;
+		}
+
+		int commaIndex = dataUrl.indexOf(',');
+		if (commaIndex <= 0 || commaIndex >= dataUrl.length() - 1) {
+			return null;
+		}
+
+		String payload = dataUrl.substring(commaIndex + 1).trim();
+		if (payload.contains("%")) {
+			try {
+				payload = java.net.URLDecoder.decode(payload, StandardCharsets.UTF_8);
+			} catch (Exception ignored) {
+				// Keep original payload and try decode paths below.
+			}
+		}
+
+		byte[] decoded = this.bsl$tryBase64Decode(payload);
+		if (decoded == null || decoded.length == 0) {
+			return null;
+		}
+
+		try {
+			return NativeImage.read(new ByteArrayInputStream(decoded));
+		} catch (Exception ignored) {
+			return null;
+		}
+	}
+
+	private byte[] bsl$tryBase64Decode(String payload) {
+		try {
+			return Base64.getDecoder().decode(payload);
+		} catch (Exception ignored) {
+		}
+		try {
+			return Base64.getMimeDecoder().decode(payload);
+		} catch (Exception ignored) {
+		}
+		try {
+			return Base64.getUrlDecoder().decode(payload);
+		} catch (Exception ignored) {
+		}
+		return null;
+	}
+
+	private String bsl$extractMcsrvstatAddress(String logoUrl) {
+		if (logoUrl == null || logoUrl.isEmpty()) {
+			return "";
+		}
+		String normalized = logoUrl;
+		if (normalized.startsWith(MCSRSTAT_ICON_PREFIX)) {
+			normalized = normalized.substring(MCSRSTAT_ICON_PREFIX.length());
+		} else if (normalized.startsWith(MCSRSTAT_ICON_PREFIX_HTTP)) {
+			normalized = normalized.substring(MCSRSTAT_ICON_PREFIX_HTTP.length());
+		} else {
+			return "";
+		}
+
+		int queryIndex = normalized.indexOf('?');
+		if (queryIndex >= 0) {
+			normalized = normalized.substring(0, queryIndex);
+		}
+		return normalized.trim();
 	}
 
 	private void bsl$releaseLogoTextures() {

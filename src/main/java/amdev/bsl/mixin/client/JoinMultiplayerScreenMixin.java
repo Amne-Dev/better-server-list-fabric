@@ -2,6 +2,7 @@ package amdev.bsl.mixin.client;
 
 import amdev.bsl.client.ServerMetadataStore;
 import amdev.bsl.client.ServerOrdering;
+import amdev.bsl.client.gui.CategoryFilterSidebarScreen;
 import amdev.bsl.client.gui.CategoryEditScreen;
 import amdev.bsl.client.gui.ServerBrowserScreen;
 import java.util.ArrayList;
@@ -84,6 +85,9 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 	private int bslLastLayoutHeight = -1;
 
 	@Unique
+	private boolean bslPendingFilterApply;
+
+	@Unique
 	private static final int BSL_CONTROL_HEIGHT = 20;
 
 	@Unique
@@ -94,6 +98,12 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 	@Unique
 	private static final int BSL_HEADER_HEIGHT = 118;
+
+	@Unique
+	private static final int BSL_LIST_TOP_GAP = 8;
+
+	@Unique
+	private static final int BSL_LIST_BOTTOM_PADDING = 64;
 
 	@Inject(method = "init", at = @At("TAIL"))
 	private void bsl$addCategoryButtons(CallbackInfo ci) {
@@ -134,6 +144,10 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		if (this.width != this.bslLastLayoutWidth || this.height != this.bslLastLayoutHeight) {
 			this.bsl$layoutWidgets();
 		}
+		if (this.bslPendingFilterApply && this.minecraft != null && this.minecraft.screen == (Object) this) {
+			this.bslPendingFilterApply = false;
+			this.bsl$applyServerView(null);
+		}
 	}
 
 	@Inject(method = "refreshServerList", at = @At("TAIL"))
@@ -151,7 +165,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		this.bsl$closeCategoryDropdown();
 		ServerMetadataStore.save();
 	}
-
 	@Unique
 	private void bsl$toggleFavorite() {
 		ServerData selected = this.bsl$getSelectedServerData();
@@ -316,11 +329,13 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 	@Unique
 	private void bsl$toggleCategoryDropdown() {
-		if (this.bslCategoryDropdownOpen) {
-			this.bsl$closeCategoryDropdown();
-			return;
-		}
-		this.bsl$openCategoryDropdown();
+		this.bsl$closeCategoryDropdown();
+		this.minecraft.setScreen(
+			new CategoryFilterSidebarScreen((JoinMultiplayerScreen) (Object) this, this.bslActiveCategoryFilter, category -> {
+				this.bslActiveCategoryFilter = category == null ? "" : category;
+				this.bslPendingFilterApply = true;
+			})
+		);
 	}
 
 	@Unique
@@ -428,6 +443,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		this.bslLastLayoutWidth = this.width;
 		this.bslLastLayoutHeight = this.height;
 		this.bsl$closeCategoryDropdown();
+		this.bsl$layoutServerListArea();
 	}
 
 	@Unique
@@ -435,6 +451,25 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		widget.setSize(width, height);
 		widget.setX(x);
 		widget.setY(y);
+	}
+
+	@Unique
+	private void bsl$layoutServerListArea() {
+		if (this.serverSelectionList == null) {
+			return;
+		}
+
+		int controlsBottom = Math.max(
+			Math.max(this.bslSearchBox.getY() + this.bslSearchBox.getHeight(), this.bslFavoriteButton.getY() + this.bslFavoriteButton.getHeight()),
+			Math.max(
+				this.bslCategoryButton.getY() + this.bslCategoryButton.getHeight(),
+				Math.max(this.bslFindServersButton.getY() + this.bslFindServersButton.getHeight(), this.bslCategoryFilterButton.getY() + this.bslCategoryFilterButton.getHeight())
+			)
+		);
+
+		int top = Math.max(48, controlsBottom + BSL_LIST_TOP_GAP);
+		int contentHeight = Math.max(80, this.height - BSL_LIST_BOTTOM_PADDING - top);
+		this.serverSelectionList.updateSizeAndPosition(this.width, contentHeight, top);
 	}
 
 	@Unique

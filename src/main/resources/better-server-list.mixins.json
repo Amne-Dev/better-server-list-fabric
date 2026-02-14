@@ -1,7 +1,7 @@
 {
 	"required": true,
 	"package": "amdev.bsl.mixin",
-	"compatibilityLevel": "JAVA_21",
+	"compatibilityLevel": "${mixin_compatibility_level}",
 	"mixins": [],
 	"client": [
 		"client.FrameLayoutAccessor",
@@ -9,7 +9,8 @@
 		"client.JoinMultiplayerScreenInvoker",
 		"client.JoinMultiplayerScreenMixin",
 		"client.OnlineServerEntryMixin",
-		"client.ServerSelectionListAccessor"
+		"client.ServerSelectionListAccessor",
+		"client.TitleScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

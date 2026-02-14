@@ -51,20 +51,39 @@ public final class PublicServerCatalog {
 		new Entry("Mineplex", "us.mineplex.com", "Classic arcade server with mixed game modes.", "Arcade", "https://www.mineplex.com", List.of("arcade", "party"), -1, -1, "https://api.mcsrvstat.us/icon/us.mineplex.com"),
 		new Entry("The Hive", "play.hivemc.com", "Social and competitive minigames.", "Minigames", "https://playhive.com", List.of("bedrock", "minigames"), -1, -1, "https://api.mcsrvstat.us/icon/play.hivemc.com")
 	);
+	private static volatile LoadResult sessionCachedLoadResult;
 
 	private PublicServerCatalog() {
 	}
 
 	public static CompletableFuture<LoadResult> loadPreferredAsync(ResourceManager resourceManager) {
+		LoadResult cached = sessionCachedLoadResult;
+		if (cached != null) {
+			return CompletableFuture.completedFuture(cached);
+		}
+
 		return CompletableFuture.supplyAsync(() -> loadPreferred(resourceManager));
+	}
+
+	public static CompletableFuture<LoadResult> reloadPreferredAsync(ResourceManager resourceManager) {
+		sessionCachedLoadResult = null;
+		return CompletableFuture.supplyAsync(() -> loadPreferred(resourceManager));
+	}
+
+	public static LoadResult getSessionCachedResult() {
+		return sessionCachedLoadResult;
 	}
 
 	public static LoadResult loadPreferred(ResourceManager resourceManager) {
 		LiveFetchResult online = fetchLiveServers();
 		if (online.reachedLiveApi()) {
-			return new LoadResult(online.entries(), true);
+			LoadResult live = new LoadResult(online.entries(), true);
+			sessionCachedLoadResult = live;
+			return live;
 		}
-		return new LoadResult(loadBundled(resourceManager), false);
+		LoadResult bundled = new LoadResult(loadBundled(resourceManager), false);
+		sessionCachedLoadResult = bundled;
+		return bundled;
 	}
 
 	public static List<Entry> loadBundled(ResourceManager resourceManager) {
@@ -108,7 +127,7 @@ public final class PublicServerCatalog {
 					.uri(URI.create(endpoint))
 					.timeout(Duration.ofSeconds(20))
 					.header("Accept", "application/json")
-					.header("User-Agent", "better-server-list-fabric/1.0")
+					.header("User-Agent", "better-server-list-fabric/1.1")
 					.build();
 
 				HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
@@ -214,7 +233,7 @@ public final class PublicServerCatalog {
 					.uri(URI.create(endpoint))
 					.timeout(Duration.ofSeconds(6))
 					.header("Accept", "application/json")
-					.header("User-Agent", "better-server-list-fabric/1.0")
+					.header("User-Agent", "better-server-list-fabric/1.1")
 					.build();
 
 				HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
