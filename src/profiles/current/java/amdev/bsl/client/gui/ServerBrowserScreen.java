@@ -21,7 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
@@ -136,7 +136,7 @@ public final class ServerBrowserScreen extends Screen {
 			Button.builder(Component.literal("Reload API"), b -> this.bsl$loadLiveCatalog(true)).bounds(reloadX, controlsY, 100, 20).build()
 		);
 		this.addRenderableWidget(
-			Button.builder(Component.literal("Done"), b -> this.minecraft.setScreen(this.parent)).bounds(doneX, controlsY, 75, 20).build()
+			Button.builder(Component.literal("Done"), b -> this.minecraft.gui.setScreen(this.parent)).bounds(doneX, controlsY, 75, 20).build()
 		);
 
 		this.loadingLive = true;
@@ -149,18 +149,18 @@ public final class ServerBrowserScreen extends Screen {
 	public void onClose() {
 		this.bsl$cancelLiveLoad();
 		this.bsl$releaseLogoTextures();
-		this.minecraft.setScreen(this.parent);
+		this.minecraft.gui.setScreen(this.parent);
 	}
 
 	@Override
-	public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
 		guiGraphics.fill(0, 0, this.width, this.height, 0xB0101010);
-		super.render(guiGraphics, mouseX, mouseY, partialTick);
+		super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
-		guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 6, 0xFFFFFFFF);
-		guiGraphics.drawString(this.font, "Results: " + this.filteredEntries.size(), 10, this.height - 76, 0xFFA0A0A0);
+		guiGraphics.centeredText(this.font, this.title, this.width / 2, 6, 0xFFFFFFFF);
+		guiGraphics.text(this.font, "Results: " + this.filteredEntries.size(), 10, this.height - 76, 0xFFA0A0A0);
 		if (!this.statusMessage.isBlank()) {
-			guiGraphics.drawString(this.font, this.statusMessage, 10, this.height - 66, 0xFF80FF80);
+			guiGraphics.text(this.font, this.statusMessage, 10, this.height - 66, 0xFF80FF80);
 		}
 
 		if (this.loadingLive) {
@@ -170,7 +170,7 @@ public final class ServerBrowserScreen extends Screen {
 		}
 	}
 
-	private void bsl$renderRows(GuiGraphics guiGraphics) {
+	private void bsl$renderRows(GuiGraphicsExtractor guiGraphics) {
 		int pageStart = this.currentPage * PAGE_SIZE;
 		for (int i = 0; i < PAGE_SIZE; i++) {
 			int index = pageStart + i;
@@ -183,22 +183,22 @@ public final class ServerBrowserScreen extends Screen {
 			int rowY = this.listTop + i * ROW_HEIGHT;
 
 			if (entry.equals(this.selected)) {
-				guiGraphics.renderOutline(rowX - 1, rowY - 1, this.buttonWidth + 2, ROW_HEIGHT, 0xFFFFD67A);
+				guiGraphics.outline(rowX - 1, rowY - 1, this.buttonWidth + 2, ROW_HEIGHT, 0xFFFFD67A);
 			}
 
 			this.bsl$ensureLogoTexture(entry);
 			this.bsl$drawLogo(guiGraphics, entry, rowX + 6, rowY + 8);
 
-			guiGraphics.drawString(this.font, this.bsl$abbreviate(entry.name(), 38), rowX + 28, rowY + 6, 0xFFFFFFFF, false);
-			guiGraphics.drawString(this.font, this.bsl$abbreviate(entry.address(), 45), rowX + 28, rowY + 18, 0xFF9FA7B0, false);
+			guiGraphics.text(this.font, this.bsl$abbreviate(entry.name(), 38), rowX + 28, rowY + 6, 0xFFFFFFFF, false);
+			guiGraphics.text(this.font, this.bsl$abbreviate(entry.address(), 45), rowX + 28, rowY + 18, 0xFF9FA7B0, false);
 
 			String playersText = this.bsl$playersText(entry);
 			int playersColor = entry.players() > 0 ? 0xFF9DE27A : 0xFFA0A0A0;
-			guiGraphics.drawString(this.font, playersText, rowX + this.buttonWidth - 120, rowY + 12, playersColor, false);
+			guiGraphics.text(this.font, playersText, rowX + this.buttonWidth - 120, rowY + 12, playersColor, false);
 		}
 	}
 
-	private void bsl$renderLoadingIndicator(GuiGraphics guiGraphics) {
+	private void bsl$renderLoadingIndicator(GuiGraphicsExtractor guiGraphics) {
 		float wave = (float) Math.sin((Util.getMillis() % 1600L) / 1600.0 * Math.PI * 2.0);
 		float pulse = (wave + 1.0f) * 0.5f;
 		int iconX = this.width / 2 - 8;
@@ -206,7 +206,7 @@ public final class ServerBrowserScreen extends Screen {
 
 		ItemStack icon = this.bsl$getLoadingIcon();
 		if (!icon.isEmpty()) {
-			guiGraphics.renderItem(icon, iconX, iconY);
+			guiGraphics.item(icon, iconX, iconY);
 		} else {
 			this.bsl$renderFallbackIcon(guiGraphics, iconX, iconY, true);
 		}
@@ -216,10 +216,10 @@ public final class ServerBrowserScreen extends Screen {
 		guiGraphics.fill(iconX, iconY, iconX + 16, iconY + 16, lightAlpha | 0x00FFFFFF);
 
 		int textAlpha = ((int) (140 + pulse * 115.0f)) << 24;
-		guiGraphics.drawCenteredString(this.font, "Loading...", this.width / 2, iconY + 24, textAlpha | 0xD8C8FF);
+		guiGraphics.centeredText(this.font, "Loading...", this.width / 2, iconY + 24, textAlpha | 0xD8C8FF);
 	}
 
-	private void bsl$drawLogo(GuiGraphics guiGraphics, PublicServerCatalog.Entry entry, int x, int y) {
+	private void bsl$drawLogo(GuiGraphicsExtractor guiGraphics, PublicServerCatalog.Entry entry, int x, int y) {
 		String key = this.bsl$logoKey(entry.address());
 		Identifier identifier = this.logoTextures.get(key);
 		if (identifier != null) {
@@ -229,7 +229,7 @@ public final class ServerBrowserScreen extends Screen {
 
 		ItemStack icon = this.bsl$getLoadingIcon();
 		if (!icon.isEmpty()) {
-			guiGraphics.renderItem(icon, x, y);
+			guiGraphics.item(icon, x, y);
 		} else {
 			this.bsl$renderFallbackIcon(guiGraphics, x, y, false);
 		}
@@ -254,11 +254,11 @@ public final class ServerBrowserScreen extends Screen {
 		}
 	}
 
-	private void bsl$renderFallbackIcon(GuiGraphics guiGraphics, int x, int y, boolean loading) {
+	private void bsl$renderFallbackIcon(GuiGraphicsExtractor guiGraphics, int x, int y, boolean loading) {
 		int fillColor = loading ? 0xFF6C5D92 : 0xFF4B4F57;
 		int borderColor = loading ? 0xFFD8C8FF : 0xFF9AA0AA;
 		guiGraphics.fill(x, y, x + 16, y + 16, fillColor);
-		guiGraphics.renderOutline(x, y, 16, 16, borderColor);
+		guiGraphics.outline(x, y, 16, 16, borderColor);
 	}
 
 	private void bsl$refreshFilteredEntries() {
@@ -318,7 +318,7 @@ public final class ServerBrowserScreen extends Screen {
 			? PublicServerCatalog.reloadPreferredAsync(this.minecraft.getResourceManager())
 			: PublicServerCatalog.loadPreferredAsync(this.minecraft.getResourceManager());
 		this.liveLoadFuture.whenComplete((result, throwable) -> this.minecraft.execute(() -> {
-			if (this.minecraft == null || this.minecraft.screen != this) {
+			if (this.minecraft == null || this.minecraft.gui.screen() != this) {
 				return;
 			}
 

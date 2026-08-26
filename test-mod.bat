@@ -44,7 +44,7 @@ if errorlevel 1 (
 )
 
 echo [2/3] Checking live server API...
-powershell -NoProfile -Command "$ProgressPreference='SilentlyContinue'; try { $r=Invoke-RestMethod -Uri 'https://servers.minespark.org/servers/java' -TimeoutSec 12; if($r -and $r.Count -gt 0) { Write-Host ('Live API OK: entries=' + $r.Count) } else { Write-Host 'Live API returned empty data.' } } catch { Write-Host ('Live API check failed (mod will use bundled fallback): ' + $_.Exception.Message) }"
+powershell -NoProfile -Command "$ProgressPreference='SilentlyContinue'; try { $r=Invoke-RestMethod -Uri 'https://minecraft-list.info/api/v1/servers?game.slug=minecraft&page=1' -Headers @{'Accept'='application/json';'User-Agent'='better-server-list-fabric/1.2'} -TimeoutSec 12; if($r -and $r.Count -gt 0) { Write-Host ('Live API OK: entries=' + $r.Count) } else { Write-Host 'Live API returned empty data.' } } catch { Write-Host ('Live API check failed (mod will use bundled fallback): ' + $_.Exception.Message) }"
 
 echo [3/3] Launching Minecraft test client...
 if "%NO_RUN%"=="1" (

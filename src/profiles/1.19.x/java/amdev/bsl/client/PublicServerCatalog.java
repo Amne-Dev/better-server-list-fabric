@@ -28,21 +28,14 @@ import net.minecraft.server.packs.resources.ResourceManager;
 
 public final class PublicServerCatalog {
 	private static final ResourceLocation RESOURCE_ID = new ResourceLocation(BetterServerList.MOD_ID, "public_servers.json");
-	private static final List<String> LIVE_JAVA_ENDPOINTS = List.of(
-		"https://servers.minespark.org/servers/java?status=online",
-		"https://servers.minespark.org/servers/java?limit=1500",
-		"https://servers.minespark.org/servers/java",
-		"https://servers.minespark.org/servers/java/"
-	);
-	private static final List<String> LIVE_STATUS_ENDPOINT_TEMPLATES = List.of(
-		"https://srvstat.minespark.org/general/%s",
-		"https://api.mcsrvstat.us/3/%s"
-	);
-	private static final int LIVE_STATUS_CHECK_LIMIT = 180;
-	private static final int LIVE_STATUS_CHECK_THREADS = 24;
+	private static final String LIVE_JAVA_ENDPOINT_TEMPLATE = "https://minecraft-list.info/api/v1/servers?game.slug=minecraft&page=%d";
+	private static final String LIVE_SERVER_PAGE_BASE_URL = "https://minecraft-list.info/server/";
+	private static final String LIVE_SERVER_ASSET_BASE_URL = "https://minecraft-list.info";
+	private static final int LIVE_JAVA_PAGE_COUNT = 5;
+	private static final int LIVE_REQUEST_TIMEOUT_SECONDS = 8;
 	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
 		.followRedirects(HttpClient.Redirect.NORMAL)
-		.connectTimeout(Duration.ofSeconds(15))
+		.connectTimeout(Duration.ofSeconds(LIVE_REQUEST_TIMEOUT_SECONDS))
 		.build();
 	private static final List<Entry> FALLBACK = List.of(
 		new Entry("Hypixel", "mc.hypixel.net", "Popular minigames and PvP modes.", "Minigames", "https://hypixel.net", List.of("pvp", "skyblock", "bedwars"), -1, -1, "https://api.mcsrvstat.us/icon/mc.hypixel.net"),
@@ -117,157 +110,80 @@ public final class PublicServerCatalog {
 
 	private static LiveFetchResult fetchLiveServers() {
 		Map<String, Entry> byAddress = new LinkedHashMap<>();
-		boolean reachedLiveApi = false;
-
-		for (String endpoint : LIVE_JAVA_ENDPOINTS) {
-			try {
-				HttpRequest request = HttpRequest.newBuilder()
-					.GET()
-					.uri(URI.create(endpoint))
-					.timeout(Duration.ofSeconds(20))
-					.header("Accept", "application/json")
-					.header("User-Agent", "better-server-list-fabric/1.1")
-					.build();
-
-				HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-				if (response.statusCode() < 200 || response.statusCode() >= 300) {
-					BetterServerList.LOGGER.warn("Live server catalog request to {} failed with status {}", endpoint, response.statusCode());
-					continue;
-				}
-				reachedLiveApi = true;
-
-				JsonElement root = bsl$parseJson(response.body());
-				JsonArray array = extractArray(root);
-				if (array == null) {
-					continue;
-				}
-
-				for (JsonElement element : array) {
-					if (!element.isJsonObject()) {
-						continue;
-					}
-					Entry entry = parseLiveEntry(element.getAsJsonObject());
-					if (entry != null) {
-						byAddress.putIfAbsent(entry.address().toLowerCase(Locale.ROOT), entry);
-					}
-				}
-			} catch (Exception exception) {
-				BetterServerList.LOGGER.warn("Failed to fetch live server catalog from {}", endpoint, exception);
-			}
-		}
-
-		List<Entry> baseEntries = new ArrayList<>(byAddress.values());
-		List<Entry> hydratedEntries = hydrateLiveEntries(baseEntries);
-		if (!hydratedEntries.isEmpty()) {
-			return new LiveFetchResult(hydratedEntries, reachedLiveApi);
-		}
-
-		if (reachedLiveApi && !baseEntries.isEmpty()) {
-			baseEntries.sort(
-				Comparator
-					.comparingInt(PublicServerCatalog::bsl$sortablePlayers)
-					.reversed()
-					.thenComparing(Entry::name, String.CASE_INSENSITIVE_ORDER)
-			);
-			return new LiveFetchResult(baseEntries, true);
-		}
-
-		return new LiveFetchResult(List.of(), reachedLiveApi);
-	}
-
-	private static List<Entry> hydrateLiveEntries(List<Entry> baseEntries) {
-		if (baseEntries.isEmpty()) {
-			return List.of();
-		}
-
-		int limit = Math.min(LIVE_STATUS_CHECK_LIMIT, baseEntries.size());
-		ExecutorService executor = Executors.newFixedThreadPool(LIVE_STATUS_CHECK_THREADS);
-		List<CompletableFuture<Entry>> futures = new ArrayList<>(limit);
-		for (int i = 0; i < limit; i++) {
-			Entry seed = baseEntries.get(i);
-			futures.add(CompletableFuture.supplyAsync(() -> fetchStatusEntry(seed), executor));
+		List<CompletableFuture<List<Entry>>> pageRequests = new ArrayList<>(LIVE_JAVA_PAGE_COUNT);
+		for (int page = 1; page <= LIVE_JAVA_PAGE_COUNT; page++) {
+			pageRequests.add(fetchLivePage(page));
 		}
 
 		try {
 			CompletableFuture
-				.allOf(futures.toArray(new CompletableFuture[0]))
-				.get(25, TimeUnit.SECONDS);
-		} catch (Exception ignored) {
-			// Partial results are still useful if some probes timed out.
-		} finally {
-			executor.shutdownNow();
+				.allOf(pageRequests.toArray(CompletableFuture[]::new))
+				.get(LIVE_REQUEST_TIMEOUT_SECONDS + 2L, TimeUnit.SECONDS);
+		} catch (Exception exception) {
+			BetterServerList.LOGGER.warn("Timed out while loading part of the live server catalog; using any completed pages.");
 		}
 
-		Map<String, Entry> byAddress = new LinkedHashMap<>();
-		for (Entry entry : baseEntries) {
-			byAddress.put(entry.address().toLowerCase(Locale.ROOT), entry);
-		}
-
-		for (CompletableFuture<Entry> future : futures) {
-			Entry entry = future.getNow(null);
-			if (entry != null) {
-				byAddress.put(entry.address().toLowerCase(Locale.ROOT), entry);
+		for (CompletableFuture<List<Entry>> pageRequest : pageRequests) {
+			for (Entry entry : pageRequest.getNow(List.of())) {
+				byAddress.putIfAbsent(entry.address().toLowerCase(Locale.ROOT), entry);
 			}
 		}
 
-		List<Entry> hydrated = new ArrayList<>(byAddress.values());
-		hydrated.sort(
+		List<Entry> entries = new ArrayList<>(byAddress.values());
+		entries.sort(
 			Comparator
 				.comparingInt(PublicServerCatalog::bsl$sortablePlayers)
 				.reversed()
 				.thenComparing(Entry::name, String.CASE_INSENSITIVE_ORDER)
 		);
-		return hydrated;
+		return new LiveFetchResult(entries, !entries.isEmpty());
 	}
 
-	private static Entry fetchStatusEntry(Entry seed) {
-		String encodedAddress = URLEncoder.encode(seed.address(), StandardCharsets.UTF_8);
-		for (String template : LIVE_STATUS_ENDPOINT_TEMPLATES) {
-			try {
-				String endpoint = String.format(template, encodedAddress);
-				HttpRequest request = HttpRequest.newBuilder()
-					.GET()
-					.uri(URI.create(endpoint))
-					.timeout(Duration.ofSeconds(6))
-					.header("Accept", "application/json")
-					.header("User-Agent", "better-server-list-fabric/1.1")
-					.build();
+	private static CompletableFuture<List<Entry>> fetchLivePage(int page) {
+		String endpoint = LIVE_JAVA_ENDPOINT_TEMPLATE.formatted(page);
+		HttpRequest request = HttpRequest.newBuilder()
+			.GET()
+			.uri(URI.create(endpoint))
+			.timeout(Duration.ofSeconds(LIVE_REQUEST_TIMEOUT_SECONDS))
+			.header("Accept", "application/json")
+			.header("User-Agent", "better-server-list-fabric/1.2")
+			.build();
 
-				HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+		return HTTP_CLIENT
+			.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+			.handle((response, throwable) -> {
+				if (throwable != null) {
+					BetterServerList.LOGGER.warn("Failed to fetch live server catalog page {} from minecraft-list.info", page, throwable);
+					return List.of();
+				}
 				if (response.statusCode() < 200 || response.statusCode() >= 300) {
-					continue;
+					BetterServerList.LOGGER.warn("Live server catalog page {} failed with status {}", page, response.statusCode());
+					return List.of();
 				}
 
-				JsonElement parsed = bsl$parseJson(response.body());
-				if (parsed == null || !parsed.isJsonObject()) {
-					continue;
-				}
+				try {
+					JsonArray array = extractArray(new JsonParser().parse(response.body()));
+					if (array == null) {
+						BetterServerList.LOGGER.warn("Live server catalog page {} returned an unexpected response.", page);
+						return List.of();
+					}
 
-				JsonObject status = parsed.getAsJsonObject();
-				boolean online = readBoolean(status, "online");
-
-				int players = readNestedInt(status, "players", "online");
-				int maxPlayers = readNestedInt(status, "players", "max");
-				if (players < 0) {
-					players = Math.max(seed.players(), 0);
+					List<Entry> entries = new ArrayList<>(array.size());
+					for (JsonElement element : array) {
+						if (!element.isJsonObject()) {
+							continue;
+						}
+						Entry entry = parseLiveEntry(element.getAsJsonObject());
+						if (entry != null) {
+							entries.add(entry);
+						}
+					}
+					return entries;
+				} catch (Exception exception) {
+					BetterServerList.LOGGER.warn("Failed to parse live server catalog page {} from minecraft-list.info", page, exception);
+					return List.of();
 				}
-				if (maxPlayers < 0) {
-					maxPlayers = seed.maxPlayers();
-				}
-
-				String logo = seed.logoUrl();
-				String icon = readString(status, "icon");
-				if (logo.isEmpty() && !icon.isEmpty()) {
-					logo = icon;
-				}
-
-				String description = buildDescription(online ? "online" : "offline", players, maxPlayers);
-				return new Entry(seed.name(), seed.address(), description, seed.category(), seed.website(), seed.tags(), players, maxPlayers, logo);
-			} catch (Exception ignored) {
-				// Try next status provider.
-			}
-		}
-		return null;
+			});
 	}
 
 	private static JsonArray extractArray(JsonElement root) {
@@ -293,44 +209,67 @@ public final class PublicServerCatalog {
 
 	private static Entry parseLiveEntry(JsonObject object) {
 		String name = sanitizeServerName(readString(object, "name"));
-		if (name.isEmpty()) {
-			name = sanitizeServerName(readString(object, "serverName"));
-		}
-		String address = readString(object, "ipAddress");
-		if (address.isEmpty()) {
-			address = readString(object, "address");
-		}
-		if (address.isEmpty()) {
-			address = readString(object, "ip");
-		}
-		if (name.isEmpty() || address.isEmpty()) {
+		String host = readString(object, "host");
+		if (name.isBlank() || host.isBlank()) {
 			return null;
 		}
 
-		String platform = readString(object, "platform");
-		String status = readString(object, "status");
-		int players = readLivePlayers(object);
-		int maxPlayers = readLiveMaxPlayers(object);
-		String logo = readString(object, "logo");
+		int port = readInt(object, "port");
+		String address = formatAddress(host, port);
+		boolean online = readBoolean(object, "online");
+		int players = online ? Math.max(readInt(object, "players"), 0) : 0;
+		int maxPlayers = readInt(object, "maxPlayers");
+		String description = readString(object, "description");
+		if (description.isBlank()) {
+			description = buildDescription(online ? "online" : "offline", players, maxPlayers);
+		}
 
-		String description = buildDescription(status, players, maxPlayers);
-		String category = platform.isEmpty() ? "Online" : platform;
+		String uuid = readString(object, "uuid");
+		String website = uuid.isBlank() ? "" : LIVE_SERVER_PAGE_BASE_URL + uuid;
+		String logo = normalizeCatalogAssetUrl(readString(object, "faviconPath"));
+		if (logo.isBlank()) {
+			logo = "https://api.mcsrvstat.us/icon/" + address;
+		}
 
 		List<String> tags = new ArrayList<>();
-		if (!platform.isEmpty()) {
-			tags.add(platform);
+		String version = readString(object, "serverVersionRaw");
+		if (!version.isBlank()) {
+			tags.add(version);
 		}
-		if (!status.isEmpty()) {
-			tags.add(status.toLowerCase(Locale.ROOT));
+		String country = readString(object, "country");
+		if (!country.isBlank()) {
+			tags.add(country.toUpperCase(Locale.ROOT));
 		}
+		tags.add(online ? "online" : "offline");
 		if (players > 0) {
 			tags.add("active");
 		}
-		if (!logo.isEmpty()) {
-			tags.add("icon");
-		}
 
-		return new Entry(name, address, description, category, "", tags, players, maxPlayers, logo);
+		return new Entry(name, address, description, "Java", website, tags, players, maxPlayers, logo);
+	}
+
+	private static String formatAddress(String host, int port) {
+		if (port <= 0 || port == 25565) {
+			return host;
+		}
+		if (host.indexOf(':') >= 0 && !host.startsWith("[")) {
+			return '[' + host + "]:" + port;
+		}
+		return host + ':' + port;
+	}
+
+	private static String normalizeCatalogAssetUrl(String value) {
+		if (value == null || value.isBlank()) {
+			return "";
+		}
+		String trimmed = value.trim();
+		if (trimmed.startsWith("/")) {
+			return LIVE_SERVER_ASSET_BASE_URL + trimmed;
+		}
+		if (trimmed.startsWith("https://") || trimmed.startsWith("http://")) {
+			return trimmed;
+		}
+		return "";
 	}
 
 	private static Entry parseEntry(JsonObject object) {
@@ -414,58 +353,6 @@ public final class PublicServerCatalog {
 			String text = element.getAsString().trim();
 			return "true".equalsIgnoreCase(text) || "1".equals(text);
 		}
-	}
-
-	private static int readNestedInt(JsonObject object, String parentKey, String childKey) {
-		JsonElement parent = object.get(parentKey);
-		if (parent == null || !parent.isJsonObject()) {
-			return -1;
-		}
-		return readInt(parent.getAsJsonObject(), childKey);
-	}
-
-	private static int readLivePlayers(JsonObject object) {
-		int direct = firstKnownInt(object, "players", "onlinePlayers", "playerCount");
-		if (direct >= 0) {
-			return direct;
-		}
-
-		JsonElement playersElement = object.get("players");
-		if (playersElement != null && playersElement.isJsonObject()) {
-			JsonObject players = playersElement.getAsJsonObject();
-			int nested = firstKnownInt(players, "online", "current", "count", "value");
-			if (nested >= 0) {
-				return nested;
-			}
-		}
-		return -1;
-	}
-
-	private static int readLiveMaxPlayers(JsonObject object) {
-		int direct = firstKnownInt(object, "maxPlayers", "playerLimit", "max");
-		if (direct >= 0) {
-			return direct;
-		}
-
-		JsonElement playersElement = object.get("players");
-		if (playersElement != null && playersElement.isJsonObject()) {
-			JsonObject players = playersElement.getAsJsonObject();
-			int nested = firstKnownInt(players, "max", "maximum", "limit");
-			if (nested >= 0) {
-				return nested;
-			}
-		}
-		return -1;
-	}
-
-	private static int firstKnownInt(JsonObject object, String... keys) {
-		for (String key : keys) {
-			int value = readInt(object, key);
-			if (value >= 0) {
-				return value;
-			}
-		}
-		return -1;
 	}
 
 	private static String buildDescription(String status, int players, int maxPlayers) {

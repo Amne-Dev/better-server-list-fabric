@@ -4,14 +4,10 @@ import amdev.bsl.client.PublicServerCatalog;
 import amdev.bsl.client.ServerMetadataStore;
 import amdev.bsl.client.ServerOrdering;
 import amdev.bsl.mixin.client.JoinMultiplayerScreenInvoker;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -44,9 +40,6 @@ import net.minecraft.world.item.Items;
 public final class ServerBrowserScreen extends Screen {
 	private static final int PAGE_SIZE = 8;
 	private static final int ROW_HEIGHT = 36;
-	private static final String MCSRSTAT_ICON_PREFIX = "https://api.mcsrvstat.us/icon/";
-	private static final String MCSRSTAT_ICON_PREFIX_HTTP = "http://api.mcsrvstat.us/icon/";
-	private static final String MINE_SPARK_STATUS_TEMPLATE = "https://srvstat.minespark.org/general/%s";
 	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
 		.followRedirects(HttpClient.Redirect.NORMAL)
 		.connectTimeout(Duration.ofSeconds(8))
@@ -490,20 +483,12 @@ public final class ServerBrowserScreen extends Screen {
 				return directDataImage;
 			}
 
-			String mcsAddress = this.bsl$extractMcsrvstatAddress(logoUrl);
-			if (!mcsAddress.isEmpty()) {
-				NativeImage fallbackStatusIcon = this.bsl$downloadMinesparkStatusIcon(mcsAddress);
-				if (fallbackStatusIcon != null) {
-					return fallbackStatusIcon;
-				}
-			}
-
 			HttpRequest request = HttpRequest.newBuilder()
 				.GET()
 				.uri(URI.create(logoUrl))
 				.timeout(Duration.ofSeconds(8))
 				.header("Accept", "image/png,image/*")
-				.header("User-Agent", "better-server-list-fabric/1.1")
+				.header("User-Agent", "better-server-list-fabric/1.2")
 				.build();
 			HttpResponse<byte[]> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofByteArray());
 			if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -511,39 +496,6 @@ public final class ServerBrowserScreen extends Screen {
 			}
 			return NativeImage.read(new ByteArrayInputStream(response.body()));
 		} catch (Exception exception) {
-			return null;
-		}
-	}
-
-	private NativeImage bsl$downloadMinesparkStatusIcon(String address) {
-		try {
-			String encodedAddress = URLEncoder.encode(address, StandardCharsets.UTF_8);
-			String endpoint = String.format(MINE_SPARK_STATUS_TEMPLATE, encodedAddress);
-			HttpRequest request = HttpRequest.newBuilder()
-				.GET()
-				.uri(URI.create(endpoint))
-				.timeout(Duration.ofSeconds(8))
-				.header("Accept", "application/json")
-				.header("User-Agent", "better-server-list-fabric/1.1")
-				.build();
-			HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-			if (response.statusCode() < 200 || response.statusCode() >= 300) {
-				return null;
-			}
-
-			JsonElement parsed = new JsonParser().parse(response.body());
-			if (!parsed.isJsonObject()) {
-				return null;
-			}
-
-			JsonObject object = parsed.getAsJsonObject();
-			JsonElement iconElement = object.get("icon");
-			if (iconElement == null || !iconElement.isJsonPrimitive()) {
-				return null;
-			}
-
-			return this.bsl$decodeDataImage(iconElement.getAsString());
-		} catch (Exception ignored) {
 			return null;
 		}
 	}
@@ -593,26 +545,6 @@ public final class ServerBrowserScreen extends Screen {
 		} catch (Exception ignored) {
 		}
 		return null;
-	}
-
-	private String bsl$extractMcsrvstatAddress(String logoUrl) {
-		if (logoUrl == null || logoUrl.isEmpty()) {
-			return "";
-		}
-		String normalized = logoUrl;
-		if (normalized.startsWith(MCSRSTAT_ICON_PREFIX)) {
-			normalized = normalized.substring(MCSRSTAT_ICON_PREFIX.length());
-		} else if (normalized.startsWith(MCSRSTAT_ICON_PREFIX_HTTP)) {
-			normalized = normalized.substring(MCSRSTAT_ICON_PREFIX_HTTP.length());
-		} else {
-			return "";
-		}
-
-		int queryIndex = normalized.indexOf('?');
-		if (queryIndex >= 0) {
-			normalized = normalized.substring(0, queryIndex);
-		}
-		return normalized.trim();
 	}
 
 	private void bsl$releaseLogoTextures() {
