@@ -114,21 +114,21 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 			this.repositionElements();
 		}
 
-		this.bslSearchBox = this.addRenderableWidget(new EditBox(this.minecraft.font, 8, 8, 180, BSL_CONTROL_HEIGHT, Component.literal("Search")));
-		this.bslSearchBox.setHint(Component.literal("Search servers"));
+		this.bslSearchBox = this.addRenderableWidget(new EditBox(this.minecraft.font, 8, 8, 180, BSL_CONTROL_HEIGHT, Component.translatable("bsl.gui.search")));
+		this.bslSearchBox.setHint(Component.translatable("bsl.gui.search_hint"));
 		this.bslSearchBox.setResponder(value -> this.bsl$applyServerView(null));
 
 		this.bslFavoriteButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Fav"), button -> this.bsl$toggleFavorite()).bounds(8, 8, 100, BSL_CONTROL_HEIGHT).build()
+			Button.builder(Component.translatable("bsl.button.favorite"), button -> this.bsl$toggleFavorite()).bounds(8, 8, 100, BSL_CONTROL_HEIGHT).build()
 		);
 		this.bslCategoryButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Category"), button -> this.bsl$openCategoryEditor()).bounds(8, 8, 120, BSL_CONTROL_HEIGHT).build()
+			Button.builder(Component.translatable("bsl.button.category"), button -> this.bsl$openCategoryEditor()).bounds(8, 8, 120, BSL_CONTROL_HEIGHT).build()
 		);
 		this.bslFindServersButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Find"), button -> this.bsl$openServerBrowser()).bounds(8, 8, 110, BSL_CONTROL_HEIGHT).build()
+			Button.builder(Component.translatable("bsl.button.find"), button -> this.bsl$openServerBrowser()).bounds(8, 8, 110, BSL_CONTROL_HEIGHT).build()
 		);
 		this.bslCategoryFilterButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Show: All"), button -> this.bsl$toggleCategoryDropdown()).bounds(8, 8, 120, BSL_CONTROL_HEIGHT).build()
+			Button.builder(Component.translatable("bsl.button.category_filter", Component.translatable("bsl.category.all").getString()), button -> this.bsl$toggleCategoryDropdown()).bounds(8, 8, 120, BSL_CONTROL_HEIGHT).build()
 		);
 		this.bsl$layoutWidgets();
 		this.bsl$applyServerView(null);
@@ -267,16 +267,16 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		this.bslCategoryButton.active = hasSelection;
 
 		if (!hasSelection) {
-			this.bslFavoriteButton.setMessage(Component.literal("Fav"));
-			this.bslCategoryButton.setMessage(Component.literal("Category"));
+			this.bslFavoriteButton.setMessage(Component.translatable("bsl.button.favorite"));
+			this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
 			this.bslFindServersButton.active = true;
 			this.bsl$updateCategoryFilterButton();
 			return;
 		}
 
 		boolean favorite = ServerMetadataStore.isFavorite(selected.ip);
-		this.bslFavoriteButton.setMessage(Component.literal(favorite ? "Unfav" : "Fav"));
-		this.bslCategoryButton.setMessage(Component.literal("Category"));
+		this.bslFavoriteButton.setMessage(Component.translatable(favorite ? "bsl.button.unfavorite" : "bsl.button.favorite"));
+		this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
 		this.bslFindServersButton.active = true;
 		this.bsl$updateCategoryFilterButton();
 	}
@@ -343,8 +343,10 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		if (this.bslCategoryFilterButton == null) {
 			return;
 		}
-		String label = this.bslActiveCategoryFilter.isBlank() ? "All" : this.bsl$abbreviate(this.bslActiveCategoryFilter, 8);
-		this.bslCategoryFilterButton.setMessage(Component.literal("Show: " + label + " v"));
+		String label = this.bslActiveCategoryFilter.isBlank() 
+			? Component.translatable("bsl.category.all").getString() 
+			: this.bsl$abbreviate(this.bslActiveCategoryFilter, 8);
+		this.bslCategoryFilterButton.setMessage(Component.translatable("bsl.button.category_filter", label));
 	}
 
 	@Unique
@@ -357,7 +359,9 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 		int y = Math.max(8, this.bslCategoryFilterY - options.size() * 20);
 		for (String option : options) {
-			String label = option.isBlank() ? "All" : this.bsl$abbreviate(option, 16);
+			String label = option.isBlank() 
+				? Component.translatable("bsl.category.all").getString() 
+				: this.bsl$abbreviate(option, 16);
 			Button optionButton = this.addRenderableWidget(
 				Button.builder(Component.literal(label), button -> this.bsl$setCategoryFilter(option))
 					.bounds(this.bslCategoryFilterX, y, this.bslCategoryFilterWidth, 20)
