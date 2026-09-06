@@ -238,19 +238,19 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		boolean hasSelection = selected != null;
 		this.bslFavoriteButton.active = hasSelection;
 		this.bslCategoryButton.active = hasSelection;
+		this.bslFindServersButton.active = true;
 
 		if (!hasSelection) {
 			this.bslFavoriteButton.setMessage(Component.translatable("bsl.button.favorite"));
 			this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
-			this.bslFindServersButton.active = true;
 			this.bsl$updateCategoryFilterButton();
 			return;
 		}
 
+		// 【修復核心】：選中時依狀態動態讀取語言鍵
 		boolean favorite = ServerMetadataStore.isFavorite(selected.ip);
 		this.bslFavoriteButton.setMessage(Component.translatable(favorite ? "bsl.button.unfavorite" : "bsl.button.favorite"));
 		this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
-		this.bslFindServersButton.active = true;
 		this.bsl$updateCategoryFilterButton();
 	}
 
@@ -309,6 +309,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		}));
 	}
 
+	// 【修復核心】：動態將 Component 傳入，避免被覆蓋為英文
 	@Unique
 	private Component bsl$getCategoryFilterLabel() {
 		Component inner = this.bslActiveCategoryFilter.isBlank()
