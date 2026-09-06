@@ -4,7 +4,7 @@ import java.util.function.Consumer;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.TranslatableComponent;
 
 public final class CategoryEditScreen extends Screen {
 	private final Screen parent;
@@ -13,7 +13,7 @@ public final class CategoryEditScreen extends Screen {
 	private EditBox categoryField;
 
 	public CategoryEditScreen(Screen parent, String initialValue, Consumer<String> onSave) {
-		super(new TextComponent("Edit Category"));
+		super(new TranslatableComponent("bsl.screen.category_edit.title"));
 		this.parent = parent;
 		this.initialValue = initialValue == null ? "" : initialValue;
 		this.onSave = onSave;
@@ -25,14 +25,14 @@ public final class CategoryEditScreen extends Screen {
 		int centerX = this.width / 2;
 		int centerY = this.height / 2;
 
-		this.categoryField = this.addButton(new EditBox(this.font, centerX - fieldWidth / 2, centerY - 10, fieldWidth, 20, "Category"));
+		this.categoryField = this.addButton(new EditBox(this.font, centerX - fieldWidth / 2, centerY - 10, fieldWidth, 20, new TranslatableComponent("bsl.gui.category").getColoredString()));
 		this.categoryField.setMaxLength(32);
 		this.categoryField.setValue(this.initialValue);
 		this.categoryField.setFocus(true);
 
-		this.addButton(new Button(centerX - 155, centerY + 22, 100, 20, "Save", button -> this.bsl$saveAndClose()));
-		this.addButton(new Button(centerX - 50, centerY + 22, 100, 20, "Clear", button -> this.bsl$clearAndClose()));
-		this.addButton(new Button(centerX + 55, centerY + 22, 100, 20, "Cancel", button -> this.minecraft.setScreen(this.parent)));
+		this.addButton(new Button(centerX - 155, centerY + 22, 100, 20, new TranslatableComponent("bsl.button.save").getColoredString(), button -> this.bsl$saveAndClose()));
+		this.addButton(new Button(centerX - 50, centerY + 22, 100, 20, new TranslatableComponent("bsl.button.clear").getColoredString(), button -> this.bsl$clearAndClose()));
+		this.addButton(new Button(centerX + 55, centerY + 22, 100, 20, new TranslatableComponent("gui.cancel").getColoredString(), button -> this.minecraft.setScreen(this.parent)));
 	}
 
 	@Override
@@ -48,8 +48,8 @@ public final class CategoryEditScreen extends Screen {
 	@Override
 	public void render(int mouseX, int mouseY, float partialTick) {
 		this.fill(0, 0, this.width, this.height, 0xB0101010);
-		drawCenteredString(this.font, this.title.getString(), this.width / 2, this.height / 2 - 34, 0xFFFFFFFF);
-		drawCenteredString(this.font, "Type any custom category name", this.width / 2, this.height / 2 - 22, 0xFFA0A0A0);
+		drawCenteredString(this.font, this.title.getColoredString(), this.width / 2, this.height / 2 - 34, 0xFFFFFFFF);
+		drawCenteredString(this.font, new TranslatableComponent("bsl.screen.category_edit.hint").getColoredString(), this.width / 2, this.height / 2 - 22, 0xFFA0A0A0);
 		super.render(mouseX, mouseY, partialTick);
 	}
 
