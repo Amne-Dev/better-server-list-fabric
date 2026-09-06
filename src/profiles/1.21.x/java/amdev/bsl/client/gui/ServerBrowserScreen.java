@@ -38,7 +38,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public final class ServerBrowserScreen extends Screen {
-	private static final int PAGE_SIZE = 8;
 	private static final int ROW_HEIGHT = 36;
 	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
 		.followRedirects(HttpClient.Redirect.NORMAL)
@@ -60,6 +59,7 @@ public final class ServerBrowserScreen extends Screen {
 	private Button refreshApiButton;
 	private PublicServerCatalog.Entry selected;
 	private int currentPage;
+	private int pageSize = 6;
 	private Component statusMessage = null;
 	private int buttonX;
 	private int buttonWidth;
@@ -84,12 +84,15 @@ public final class ServerBrowserScreen extends Screen {
 		this.loadingIcon = ItemStack.EMPTY;
 		this.nextLoadingIconRetryAt = 0L;
 
-		this.listTop = 46;
+		this.listTop = 44;
 		this.buttonWidth = Math.min(this.width - 20, Math.max(575, this.width - 40));
 		this.buttonX = (this.width - this.buttonWidth) / 2;
 
+		int availableHeight = this.height - this.listTop - 56;
+		this.pageSize = Math.max(1, availableHeight / ROW_HEIGHT);
+
 		this.searchField = this.addRenderableWidget(
-			new EditBox(this.font, this.buttonX, 18, this.buttonWidth, 20, Component.translatable("bsl.browser.search_field"))
+			new EditBox(this.font, this.buttonX, 16, this.buttonWidth, 20, Component.translatable("bsl.browser.search_field"))
 		);
 		this.searchField.setHint(Component.translatable("bsl.browser.search_hint"));
 		this.searchField.setResponder(value -> {
@@ -99,7 +102,7 @@ public final class ServerBrowserScreen extends Screen {
 		this.setInitialFocus(this.searchField);
 
 		this.resultButtons.clear();
-		for (int i = 0; i < PAGE_SIZE; i++) {
+		for (int i = 0; i < this.pageSize; i++) {
 			final int slot = i;
 			Button button = this.addRenderableWidget(
 				Button.builder(Component.empty(), b -> this.bsl$selectFromSlot(slot)).bounds(
@@ -112,7 +115,7 @@ public final class ServerBrowserScreen extends Screen {
 			this.resultButtons.add(button);
 		}
 
-		int controlsY = this.height - 54;
+		int controlsY = this.height - 30;
 		int prevX = this.buttonX;
 		int nextX = prevX + 80;
 		int addX = nextX + 80;
@@ -157,10 +160,14 @@ public final class ServerBrowserScreen extends Screen {
 		guiGraphics.fill(0, 0, this.width, this.height, 0xB0101010);
 		super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-		guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 6, 0xFFFFFFFF);
-		guiGraphics.drawString(this.font, Component.translatable("bsl.browser.results", this.filteredEntries.size()), 10, this.height - 76, 0xFFA0A0A0);
+		guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 4, 0xFFFFFFFF);
+		
+		int infoY = this.height - 42;
+		Component resultsComp = Component.translatable("bsl.browser.results", this.filteredEntries.size());
+		guiGraphics.drawString(this.font, resultsComp, this.buttonX, infoY, 0xFFA0A0A0);
 		if (this.statusMessage != null) {
-			guiGraphics.drawString(this.font, this.statusMessage, 10, this.height - 66, 0xFF80FF80);
+			int statusX = this.buttonX + this.font.width(resultsComp) + 12;
+			guiGraphics.drawString(this.font, this.statusMessage, statusX, infoY, 0xFF80FF80);
 		}
 
 		if (this.loadingLive) {
@@ -171,8 +178,8 @@ public final class ServerBrowserScreen extends Screen {
 	}
 
 	private void bsl$renderRows(GuiGraphics guiGraphics) {
-		int pageStart = this.currentPage * PAGE_SIZE;
-		for (int i = 0; i < PAGE_SIZE; i++) {
+		int pageStart = this.currentPage * this.pageSize;
+		for (int i = 0; i < this.pageSize; i++) {
 			int index = pageStart + i;
 			if (index < 0 || index >= this.filteredEntries.size()) {
 				continue;
@@ -204,7 +211,7 @@ public final class ServerBrowserScreen extends Screen {
 		float wave = (float) Math.sin((Util.getMillis() % 1600L) / 1600.0 * Math.PI * 2.0);
 		float pulse = (wave + 1.0f) * 0.5f;
 		int iconX = this.width / 2 - 8;
-		int iconY = this.listTop + PAGE_SIZE * ROW_HEIGHT / 2 - 8;
+		int iconY = this.listTop + this.pageSize * ROW_HEIGHT / 2 - 8;
 
 		ItemStack icon = this.bsl$getLoadingIcon();
 		if (!icon.isEmpty()) {
@@ -276,7 +283,7 @@ public final class ServerBrowserScreen extends Screen {
 			}
 		}
 
-		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / PAGE_SIZE);
+		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / this.pageSize);
 		if (this.currentPage > maxPage) {
 			this.currentPage = maxPage;
 		}
@@ -371,7 +378,7 @@ public final class ServerBrowserScreen extends Screen {
 			return;
 		}
 
-		int pageStart = this.currentPage * PAGE_SIZE;
+		int pageStart = this.currentPage * this.pageSize;
 		for (int i = 0; i < this.resultButtons.size(); i++) {
 			Button button = this.resultButtons.get(i);
 			int index = pageStart + i;
@@ -395,7 +402,7 @@ public final class ServerBrowserScreen extends Screen {
 			return;
 		}
 
-		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / PAGE_SIZE);
+		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / this.pageSize);
 		this.previousPageButton.active = this.currentPage > 0;
 		this.nextPageButton.active = this.currentPage < maxPage;
 
@@ -414,7 +421,7 @@ public final class ServerBrowserScreen extends Screen {
 			return;
 		}
 
-		int index = this.currentPage * PAGE_SIZE + slot;
+		int index = this.currentPage * this.pageSize + slot;
 		if (index < 0 || index >= this.filteredEntries.size()) {
 			return;
 		}
@@ -428,7 +435,7 @@ public final class ServerBrowserScreen extends Screen {
 			return;
 		}
 
-		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / PAGE_SIZE);
+		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / this.pageSize);
 		this.currentPage = Math.max(0, Math.min(maxPage, this.currentPage + delta));
 		this.bsl$refreshResultButtons();
 		this.bsl$refreshActionButtons();
