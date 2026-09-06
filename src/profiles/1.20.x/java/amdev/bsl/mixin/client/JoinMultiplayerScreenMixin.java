@@ -8,9 +8,12 @@ import amdev.bsl.client.gui.ServerBrowserScreen;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.layouts.FrameLayout;
+import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
@@ -38,6 +41,9 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 	@Shadow
 	protected abstract void onSelectedChange();
+
+	@Shadow
+	private HeaderAndFooterLayout layout;
 
 	@Unique
 	private Button bslFavoriteButton;
@@ -79,6 +85,9 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 	private int bslLastLayoutHeight = -1;
 
 	@Unique
+	private boolean bslPendingFilterApply;
+
+	@Unique
 	private static final int BSL_CONTROL_HEIGHT = 20;
 
 	@Unique
@@ -88,6 +97,9 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 	private static final int BSL_TOP_Y = 36;
 
 	@Unique
+	private static final int BSL_HEADER_HEIGHT = 118;
+
+	@Unique
 	private static final int BSL_LIST_TOP_GAP = 8;
 
 	@Unique
@@ -95,6 +107,13 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 	@Inject(method = "init", at = @At("TAIL"))
 	private void bsl$addCategoryButtons(CallbackInfo ci) {
+		this.bsl$removeVanillaTitleFromHeader();
+
+		if (this.layout != null && this.layout.getHeaderHeight() < BSL_HEADER_HEIGHT) {
+			this.layout.setHeaderHeight(BSL_HEADER_HEIGHT);
+			this.repositionElements();
+		}
+
 		this.bslSearchBox = this.addRenderableWidget(new EditBox(this.minecraft.font, 8, 8, 180, BSL_CONTROL_HEIGHT, Component.translatable("bsl.gui.search")));
 		this.bslSearchBox.setHint(Component.translatable("bsl.gui.search_hint"));
 		this.bslSearchBox.setResponder(value -> this.bsl$applyServerView(null));
@@ -115,10 +134,19 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		this.bsl$applyServerView(null);
 	}
 
+	@Inject(method = "repositionElements", at = @At("TAIL"))
+	private void bsl$repositionCustomWidgets(CallbackInfo ci) {
+		this.bsl$layoutWidgets();
+	}
+
 	@Inject(method = "tick", at = @At("TAIL"))
 	private void bsl$ensureLayoutOnResize(CallbackInfo ci) {
 		if (this.width != this.bslLastLayoutWidth || this.height != this.bslLastLayoutHeight) {
 			this.bsl$layoutWidgets();
+		}
+		if (this.bslPendingFilterApply && this.minecraft != null) {
+			this.bslPendingFilterApply = false;
+			this.bsl$applyServerView(null);
 		}
 	}
 
@@ -238,19 +266,19 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		boolean hasSelection = selected != null;
 		this.bslFavoriteButton.active = hasSelection;
 		this.bslCategoryButton.active = hasSelection;
+		this.bslFindServersButton.active = true;
 
 		if (!hasSelection) {
 			this.bslFavoriteButton.setMessage(Component.translatable("bsl.button.favorite"));
 			this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
-			this.bslFindServersButton.active = true;
 			this.bsl$updateCategoryFilterButton();
 			return;
 		}
 
+		// 【修復核心】：選中時依最愛狀態正確套用翻譯鍵，不寫死 Unfav
 		boolean favorite = ServerMetadataStore.isFavorite(selected.ip);
 		this.bslFavoriteButton.setMessage(Component.translatable(favorite ? "bsl.button.unfavorite" : "bsl.button.favorite"));
 		this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
-		this.bslFindServersButton.active = true;
 		this.bsl$updateCategoryFilterButton();
 	}
 
@@ -303,12 +331,16 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 	@Unique
 	private void bsl$toggleCategoryDropdown() {
 		this.bsl$closeCategoryDropdown();
-		this.minecraft.setScreen(new CategoryFilterSidebarScreen((JoinMultiplayerScreen) (Object) this, this.bslActiveCategoryFilter, category -> {
-			this.bslActiveCategoryFilter = category == null ? "" : category;
-			this.bsl$applyServerView(null);
-		}));
+		this.minecraft.setScreen(
+			new CategoryFilterSidebarScreen((JoinMultiplayerScreen) (Object) this, this.bslActiveCategoryFilter, category -> {
+				this.bslActiveCategoryFilter = category == null ? "" : category;
+				this.bslPendingFilterApply = true;
+				this.bsl$applyServerView(null);
+			})
+		);
 	}
 
+	// 【修復核心】：動態將 Component 當作參數傳給 category_filter 模板
 	@Unique
 	private Component bsl$getCategoryFilterLabel() {
 		Component inner = this.bslActiveCategoryFilter.isBlank()
@@ -427,7 +459,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 	@Unique
 	private void bsl$setBounds(AbstractWidget widget, int x, int y, int width, int height) {
-		widget.setSize(width, height);
+		widget.setWidth(width);
 		widget.setX(x);
 		widget.setY(y);
 	}
@@ -449,6 +481,24 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		int top = Math.max(48, controlsBottom + BSL_LIST_TOP_GAP);
 		int contentHeight = Math.max(80, this.height - BSL_LIST_BOTTOM_PADDING - top);
 		this.serverSelectionList.updateSizeAndPosition(this.width, contentHeight, top);
+	}
+
+	@Unique
+	private void bsl$removeVanillaTitleFromHeader() {
+		if (this.layout == null) {
+			return;
+		}
+
+		FrameLayout headerFrame = ((HeaderAndFooterLayoutAccessor) (Object) this.layout).bsl$getHeaderFrame();
+		List<?> children = ((FrameLayoutAccessor) (Object) headerFrame).bsl$getChildren();
+		children.removeIf(container -> {
+			try {
+				Object child = container.getClass().getField("child").get(container);
+				return child instanceof StringWidget;
+			} catch (Exception ignored) {
+				return false;
+			}
+		});
 	}
 
 	@Unique
