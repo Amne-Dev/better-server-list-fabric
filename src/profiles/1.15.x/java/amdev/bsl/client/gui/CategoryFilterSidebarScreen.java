@@ -29,7 +29,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 	}
 
 	private CategoryFilterSidebarScreen(Screen parent, String activeCategory, Consumer<String> onSelect, int page) {
-		super(new TranslatableComponent("bsl.category.sidebar.title"));
+		super(new TranslatableComponent("bsl.screen.category_filter.title"));
 		this.parent = parent;
 		this.onSelect = onSelect;
 		this.activeCategory = activeCategory == null ? "" : activeCategory;
@@ -93,7 +93,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 		int listBottom = panelTop + panelHeight - FOOTER_HEIGHT + 2;
 		this.fill(panelLeft + 2, listTop, panelLeft + PANEL_WIDTH - 2, listBottom, 0xF0101010);
 		drawCenteredString(this.font, this.title.getColoredString(), panelLeft + PANEL_WIDTH / 2, panelTop + 8, 0xFFFFFFFF);
-		drawString(this.font, new TranslatableComponent("bsl.category.sidebar.subtitle").getColoredString(), panelLeft + PANEL_PADDING, panelTop + 20, 0xFFA0A0A0);
+		drawString(this.font, new TranslatableComponent("bsl.screen.category_filter.hint").getColoredString(), panelLeft + PANEL_PADDING, panelTop + 20, 0xFFA0A0A0);
 		super.render(mouseX, mouseY, partialTick);
 	}
 
@@ -137,7 +137,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 		this.fill(x, y, x + width, y + height, fillColor);
 		this.fill(x, y, x + width, y + 1, topBorderColor);
 		this.fill(x, y + height - 1, x + width, y + height, bottomBorderColor);
-		this.fill(x, y, x + 1, y + height, topBorderColor);
+		this.fill(x, y + 1, y + height, topBorderColor);
 		this.fill(x + width - 1, y, x + width, y + height, bottomBorderColor);
 	}
 
@@ -156,16 +156,13 @@ public final class CategoryFilterSidebarScreen extends Screen {
 
 	private Component bsl$formatOptionComponent(String option) {
 		String safeOption = option == null ? "" : option;
-		boolean isSelected = safeOption.equalsIgnoreCase(this.activeCategory) 
-			|| (safeOption.isEmpty() && this.activeCategory.isEmpty());
-
-		Component baseLabel = safeOption.isEmpty() 
-			? new TranslatableComponent("bsl.category.all") 
-			: new TextComponent(this.bsl$abbreviate(safeOption, 19));
-
-		return isSelected 
-			? new TranslatableComponent("bsl.category.selected_format", baseLabel) 
-			: baseLabel;
+		boolean isAll = safeOption.isEmpty();
+		String baseText = isAll ? new TranslatableComponent("bsl.category.all").getString() : safeOption;
+		if (baseText.length() > 22) {
+			baseText = baseText.substring(0, 19) + "...";
+		}
+		boolean isSelected = safeOption.equalsIgnoreCase(this.activeCategory) || (isAll && this.activeCategory.isEmpty());
+		return new TextComponent(isSelected ? "> " + baseText : baseText);
 	}
 
 	private String bsl$abbreviate(String value, int maxLength) {
