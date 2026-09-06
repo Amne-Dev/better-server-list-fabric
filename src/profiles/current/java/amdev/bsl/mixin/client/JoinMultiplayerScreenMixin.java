@@ -188,7 +188,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 		String key = selected.ip;
 		String current = ServerMetadataStore.getCategory(key);
-		this.minecraft.setScreen(new CategoryEditScreen((JoinMultiplayerScreen) (Object) this, current, next -> {
+		this.minecraft.gui.setScreen(new CategoryEditScreen((JoinMultiplayerScreen) (Object) this, current, next -> {
 			ServerMetadataStore.setCategory(key, next);
 			if (!this.bslActiveCategoryFilter.isBlank() && !ServerMetadataStore.getKnownCategories().contains(this.bslActiveCategoryFilter)) {
 				this.bslActiveCategoryFilter = "";
@@ -200,7 +200,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 	@Unique
 	private void bsl$openServerBrowser() {
 		this.bsl$closeCategoryDropdown();
-		this.minecraft.setScreen(new ServerBrowserScreen((JoinMultiplayerScreen) (Object) this));
+		this.minecraft.gui.setScreen(new ServerBrowserScreen((JoinMultiplayerScreen) (Object) this));
 	}
 
 	@Unique
@@ -330,7 +330,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 	@Unique
 	private void bsl$toggleCategoryDropdown() {
 		this.bsl$closeCategoryDropdown();
-		this.minecraft.setScreen(
+		this.minecraft.gui.setScreen(
 			new CategoryFilterSidebarScreen((JoinMultiplayerScreen) (Object) this, this.bslActiveCategoryFilter, category -> {
 				this.bslActiveCategoryFilter = category == null ? "" : category;
 				this.bslPendingFilterApply = true;
