@@ -26,7 +26,7 @@ public final class CategoryEditScreen extends Screen {
 		int centerX = this.width / 2;
 		int centerY = this.height / 2;
 
-		this.categoryField = this.addRenderableWidget(new EditBox(this.font, centerX - fieldWidth / 2, centerY - 10, fieldWidth, 20, Component.literal("Category")));
+		this.categoryField = this.addRenderableWidget(new EditBox(this.font, centerX - fieldWidth / 2, centerY - 10, fieldWidth, 20, Component.translatable("bsl.button.category")));
 		this.categoryField.setMaxLength(32);
 		this.categoryField.setValue(this.initialValue);
 		this.categoryField.setFocused(true);
