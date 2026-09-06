@@ -14,7 +14,7 @@ public final class CategoryEditScreen extends Screen {
 	private EditBox categoryField;
 
 	public CategoryEditScreen(Screen parent, String initialValue, Consumer<String> onSave) {
-		super(Component.literal("Edit Category"));
+		super(Component.translatable("bsl.screen.category_edit.title"));
 		this.parent = parent;
 		this.initialValue = initialValue == null ? "" : initialValue;
 		this.onSave = onSave;
@@ -27,20 +27,20 @@ public final class CategoryEditScreen extends Screen {
 		int centerY = this.height / 2;
 
 		this.categoryField = this.addRenderableWidget(
-			new EditBox(this.font, centerX - fieldWidth / 2, centerY - 10, fieldWidth, 20, Component.literal("Category"))
+			new EditBox(this.font, centerX - fieldWidth / 2, centerY - 10, fieldWidth, 20, Component.translatable("bsl.gui.category"))
 		);
 		this.categoryField.setMaxLength(32);
 		this.categoryField.setValue(this.initialValue);
 		this.setInitialFocus(this.categoryField);
 
 		this.addRenderableWidget(
-			Button.builder(Component.literal("Save"), button -> this.bsl$saveAndClose()).bounds(centerX - 155, centerY + 22, 100, 20).build()
+			Button.builder(Component.translatable("bsl.button.save"), button -> this.bsl$saveAndClose()).bounds(centerX - 155, centerY + 22, 100, 20).build()
 		);
 		this.addRenderableWidget(
-			Button.builder(Component.literal("Clear"), button -> this.bsl$clearAndClose()).bounds(centerX - 50, centerY + 22, 100, 20).build()
+			Button.builder(Component.translatable("bsl.button.clear"), button -> this.bsl$clearAndClose()).bounds(centerX - 50, centerY + 22, 100, 20).build()
 		);
 		this.addRenderableWidget(
-			Button.builder(Component.literal("Cancel"), button -> this.minecraft.setScreen(this.parent)).bounds(centerX + 55, centerY + 22, 100, 20).build()
+			Button.builder(Component.translatable("gui.cancel"), button -> this.minecraft.setScreen(this.parent)).bounds(centerX + 55, centerY + 22, 100, 20).build()
 		);
 	}
 
@@ -58,7 +58,7 @@ public final class CategoryEditScreen extends Screen {
 	public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
 		guiGraphics.fill(0, 0, this.width, this.height, 0xB0101010);
 		guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, this.height / 2 - 34, 0xFFFFFFFF);
-		guiGraphics.drawCenteredString(this.font, "Type any custom category name", this.width / 2, this.height / 2 - 22, 0xFFA0A0A0);
+		guiGraphics.drawCenteredString(this.font, Component.translatable("bsl.screen.category_edit.hint"), this.width / 2, this.height / 2 - 22, 0xFFA0A0A0);
 		super.render(guiGraphics, mouseX, mouseY, partialTick);
 	}
 
