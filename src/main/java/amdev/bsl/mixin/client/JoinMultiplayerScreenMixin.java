@@ -128,7 +128,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 			Button.builder(Component.translatable("bsl.button.find"), button -> this.bsl$openServerBrowser()).bounds(8, 8, 110, BSL_CONTROL_HEIGHT).build()
 		);
 		this.bslCategoryFilterButton = this.addRenderableWidget(
-			Button.builder(Component.translatable("bsl.button.category_filter", Component.translatable("bsl.category.all").getString()), button -> this.bsl$toggleCategoryDropdown()).bounds(8, 8, 120, BSL_CONTROL_HEIGHT).build()
+			Button.builder(this.bsl$getCategoryFilterLabel(), button -> this.bsl$toggleCategoryDropdown()).bounds(8, 8, 120, BSL_CONTROL_HEIGHT).build()
 		);
 		this.bsl$layoutWidgets();
 		this.bsl$applyServerView(null);
@@ -165,6 +165,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		this.bsl$closeCategoryDropdown();
 		ServerMetadataStore.save();
 	}
+
 	@Unique
 	private void bsl$toggleFavorite() {
 		ServerData selected = this.bsl$getSelectedServerData();
@@ -339,14 +340,18 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 	}
 
 	@Unique
+	private Component bsl$getCategoryFilterLabel() {
+		Component inner = this.bslActiveCategoryFilter.isBlank()
+			? Component.translatable("bsl.category.all")
+			: Component.literal(this.bsl$abbreviate(this.bslActiveCategoryFilter, 8));
+		return Component.translatable("bsl.button.category_filter", inner);
+	}
+
+	@Unique
 	private void bsl$updateCategoryFilterButton() {
-		if (this.bslCategoryFilterButton == null) {
-			return;
+		if (this.bslCategoryFilterButton != null) {
+			this.bslCategoryFilterButton.setMessage(this.bsl$getCategoryFilterLabel());
 		}
-		String label = this.bslActiveCategoryFilter.isBlank() 
-			? Component.translatable("bsl.category.all").getString() 
-			: this.bsl$abbreviate(this.bslActiveCategoryFilter, 8);
-		this.bslCategoryFilterButton.setMessage(Component.translatable("bsl.button.category_filter", label));
 	}
 
 	@Unique
@@ -359,13 +364,13 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 		int y = Math.max(8, this.bslCategoryFilterY - options.size() * 20);
 		for (String option : options) {
-			String label = option.isBlank() 
-				? Component.translatable("bsl.category.all").getString() 
-				: this.bsl$abbreviate(option, 16);
+			Component labelComp = option.isBlank()
+				? Component.translatable("bsl.category.all")
+				: Component.literal(this.bsl$abbreviate(option, 16));
 			Button optionButton = this.addRenderableWidget(
-				Button.builder(Component.literal(label), button -> this.bsl$setCategoryFilter(option))
+				Button.builder(labelComp, button -> this.bsl$setCategoryFilter(option))
 					.bounds(this.bslCategoryFilterX, y, this.bslCategoryFilterWidth, 20)
-					.build()
+					.build>
 			);
 			this.bslCategoryDropdownButtons.add(optionButton);
 			y += 20;
