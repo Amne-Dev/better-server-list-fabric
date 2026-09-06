@@ -144,7 +144,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		if (this.width != this.bslLastLayoutWidth || this.height != this.bslLastLayoutHeight) {
 			this.bsl$layoutWidgets();
 		}
-		if (this.bslPendingFilterApply && this.minecraft != null && this.minecraft.screen == (Object) this) {
+		if (this.bslPendingFilterApply && this.minecraft != null) {
 			this.bslPendingFilterApply = false;
 			this.bsl$applyServerView(null);
 		}
@@ -266,19 +266,19 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		boolean hasSelection = selected != null;
 		this.bslFavoriteButton.active = hasSelection;
 		this.bslCategoryButton.active = hasSelection;
+		this.bslFindServersButton.active = true;
 
 		if (!hasSelection) {
 			this.bslFavoriteButton.setMessage(Component.translatable("bsl.button.favorite"));
 			this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
-			this.bslFindServersButton.active = true;
 			this.bsl$updateCategoryFilterButton();
 			return;
 		}
 
+		// 【修復核心】：選中時依最愛狀態正確套用翻譯鍵，不寫死 Unfav
 		boolean favorite = ServerMetadataStore.isFavorite(selected.ip);
 		this.bslFavoriteButton.setMessage(Component.translatable(favorite ? "bsl.button.unfavorite" : "bsl.button.favorite"));
 		this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
-		this.bslFindServersButton.active = true;
 		this.bsl$updateCategoryFilterButton();
 	}
 
@@ -335,10 +335,12 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 			new CategoryFilterSidebarScreen((JoinMultiplayerScreen) (Object) this, this.bslActiveCategoryFilter, category -> {
 				this.bslActiveCategoryFilter = category == null ? "" : category;
 				this.bslPendingFilterApply = true;
+				this.bsl$applyServerView(null);
 			})
 		);
 	}
 
+	// 【修復核心】：動態將 Component 當作參數傳給 category_filter 模板
 	@Unique
 	private Component bsl$getCategoryFilterLabel() {
 		Component inner = this.bslActiveCategoryFilter.isBlank()
@@ -370,7 +372,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 			Button optionButton = this.addRenderableWidget(
 				Button.builder(labelComp, button -> this.bsl$setCategoryFilter(option))
 					.bounds(this.bslCategoryFilterX, y, this.bslCategoryFilterWidth, 20)
-					.build>
+					.build()
 			);
 			this.bslCategoryDropdownButtons.add(optionButton);
 			y += 20;
@@ -457,7 +459,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 	@Unique
 	private void bsl$setBounds(AbstractWidget widget, int x, int y, int width, int height) {
-		widget.setSize(width, height);
+		widget.setWidth(width);
 		widget.setX(x);
 		widget.setY(y);
 	}
