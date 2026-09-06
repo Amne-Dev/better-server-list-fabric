@@ -373,7 +373,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 		int controlsBottom = this.bslCategoryFilterButton == null
 			? BSL_TOP_Y + BSL_CONTROL_HEIGHT
-			: this.bslCategoryFilterButton.y + BSL_CONTROL_HEIGHT;
+			: this.bslCategoryFilterButton.y + this.bslCategoryFilterButton.getHeight();
 		int top = Math.max(48, controlsBottom + BSL_LIST_TOP_GAP);
 		this.serverSelectionList.updateSize(this.width, this.height, top, this.height - BSL_LIST_BOTTOM_PADDING);
 	}
