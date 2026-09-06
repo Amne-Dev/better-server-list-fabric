@@ -2,96 +2,96 @@
   {
     "name": "Hypixel",
     "address": "mc.hypixel.net",
-    "description": "Large minigame network with SkyBlock, BedWars, and more.",
-    "category": "Minigames",
+    "description": "bsl.server.hypixel.desc",
+    "category": "bsl.category.minigames",
     "website": "https://hypixel.net",
     "tags": ["pvp", "skyblock", "bedwars", "network"]
   },
   {
     "name": "CubeCraft",
     "address": "play.cubecraft.net",
-    "description": "Competitive minigames and team modes.",
-    "category": "Minigames",
+    "description": "bsl.server.cubecraft.desc",
+    "category": "bsl.category.minigames",
     "website": "https://www.cubecraft.net",
     "tags": ["pvp", "eggwars", "parkour"]
   },
   {
     "name": "Mineplex",
     "address": "us.mineplex.com",
-    "description": "Classic server featuring arcade game modes.",
-    "category": "Arcade",
+    "description": "bsl.server.mineplex.desc",
+    "category": "bsl.category.arcade",
     "website": "https://www.mineplex.com",
     "tags": ["arcade", "party", "classic"]
   },
   {
     "name": "The Hive",
     "address": "play.hivemc.com",
-    "description": "Polished social minigame experience.",
-    "category": "Minigames",
+    "description": "bsl.server.hive.desc",
+    "category": "bsl.category.minigames",
     "website": "https://playhive.com",
     "tags": ["minigames", "casual", "social"]
   },
   {
     "name": "MCC Island",
     "address": "play.mccisland.net",
-    "description": "Fast team PvP and party games.",
-    "category": "Minigames",
+    "description": "bsl.server.mccisland.desc",
+    "category": "bsl.category.minigames",
     "website": "https://mccisland.net",
     "tags": ["pvp", "party", "movement"]
   },
   {
     "name": "Wynncraft",
     "address": "play.wynncraft.com",
-    "description": "Massive RPG server with quests and classes.",
-    "category": "RPG",
+    "description": "bsl.server.wynncraft.desc",
+    "category": "bsl.category.rpg",
     "website": "https://wynncraft.com",
     "tags": ["rpg", "quests", "mmorpg"]
   },
   {
     "name": "Pixelmon Reforged",
     "address": "play.pixelmonrealms.com",
-    "description": "Pokemon-inspired modded multiplayer.",
-    "category": "Modded",
+    "description": "bsl.server.pixelmon.desc",
+    "category": "bsl.category.modded",
     "website": "https://pixelmonrealms.com",
     "tags": ["pixelmon", "modded", "survival"]
   },
   {
     "name": "Minewind",
     "address": "bw.minewind.net",
-    "description": "Hardcore anarchy style gameplay.",
-    "category": "Anarchy",
+    "description": "bsl.server.minewind.desc",
+    "category": "bsl.category.anarchy",
     "website": "https://minewind.com",
     "tags": ["anarchy", "hardcore", "pvp"]
   },
   {
     "name": "Complex Gaming",
     "address": "hub.mc-complex.com",
-    "description": "Popular Pixelmon and prison networks.",
-    "category": "Network",
+    "description": "bsl.server.complex.desc",
+    "category": "bsl.category.network",
     "website": "https://mc-complex.com",
     "tags": ["pixelmon", "prison", "network"]
   },
   {
     "name": "Lifesteal SMP",
     "address": "lifesteal.smp-server.com",
-    "description": "PvP-focused survival where kills steal hearts.",
-    "category": "Survival",
+    "description": "bsl.server.lifesteal.desc",
+    "category": "bsl.category.survival",
     "website": "",
     "tags": ["smp", "pvp", "lifesteal"]
   },
   {
     "name": "ManaCube",
     "address": "play.manacube.com",
-    "description": "Skyblock, parkour, and events.",
-    "category": "Network",
+    "description": "bsl.server.manacube.desc",
+    "category": "bsl.category.network",
     "website": "https://manacube.com",
     "tags": ["skyblock", "parkour", "events"]
   },
   {
     "name": "InsanityCraft",
     "address": "play.insanitycraft.net",
-    "description": "Survival and skyblock network.",
-    "category": "Survival",
+    "description": "bsl.server.insanitycraft.desc",
+    "category": "bsl.category.survival",
     "website": "https://insanitycraft.net",
     "tags": ["survival", "economy", "skyblock"]
   }
