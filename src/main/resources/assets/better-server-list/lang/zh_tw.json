@@ -1,4 +1,6 @@
 {
+  "modmenu.nameTranslation.better-server-list": "更好的模組清單",
+  "modmenu.descriptionTranslation.better-server-list": "將收藏夾和類別新增到多人伺服器清單中",
   "bsl.gui.search": "搜尋",
   "bsl.gui.search_hint": "搜尋伺服器...",
   "bsl.gui.category": "分類",
