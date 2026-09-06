@@ -37,7 +37,7 @@ public final class ServerBrowserScreen extends Screen {
 	private Button refreshApiButton;
 	private PublicServerCatalog.Entry selected;
 	private int currentPage;
-	private String statusMessage = "";
+	private Component statusMessage = null;
 	private int buttonX;
 	private int buttonWidth;
 	private int listTop;
@@ -46,7 +46,7 @@ public final class ServerBrowserScreen extends Screen {
 	private CompletableFuture<PublicServerCatalog.LoadResult> liveLoadFuture;
 
 	public ServerBrowserScreen(JoinMultiplayerScreen parent) {
-		super(Component.literal("Find Servers"));
+		super(Component.translatable("bsl.browser.title"));
 		this.parent = parent;
 	}
 
@@ -63,8 +63,8 @@ public final class ServerBrowserScreen extends Screen {
 		this.buttonWidth = Math.min(this.width - 20, Math.max(575, this.width - 40));
 		this.buttonX = (this.width - this.buttonWidth) / 2;
 
-		this.searchField = this.addRenderableWidget(new EditBox(this.font, this.buttonX, 18, this.buttonWidth, 20, Component.literal("Search public servers")));
-		this.searchField.setSuggestion("Search name, address, category, tags");
+		this.searchField = this.addRenderableWidget(new EditBox(this.font, this.buttonX, 18, this.buttonWidth, 20, Component.translatable("bsl.browser.search_field")));
+		this.searchField.setSuggestion(Component.translatable("bsl.browser.search_hint").getString());
 		this.searchField.setFocused(true);
 		this.searchField.setResponder(value -> {
 			this.currentPage = 0;
@@ -95,15 +95,15 @@ public final class ServerBrowserScreen extends Screen {
 		int reloadX = websiteX + 115;
 		int doneX = this.buttonX + this.buttonWidth - 75;
 
-		this.previousPageButton = this.addRenderableWidget(this.bsl$makeButton(prevX, controlsY, 75, 20, Component.literal("< Prev"), b -> this.bsl$changePage(-1)));
-		this.nextPageButton = this.addRenderableWidget(this.bsl$makeButton(nextX, controlsY, 75, 20, Component.literal("Next >"), b -> this.bsl$changePage(1)));
-		this.addButton = this.addRenderableWidget(this.bsl$makeButton(addX, controlsY, 110, 20, Component.literal("Add Selected"), b -> this.bsl$addSelectedServer()));
-		this.openWebsiteButton = this.addRenderableWidget(this.bsl$makeButton(websiteX, controlsY, 110, 20, Component.literal("Open Website"), b -> this.bsl$openSelectedWebsite()));
-		this.refreshApiButton = this.addRenderableWidget(this.bsl$makeButton(reloadX, controlsY, 100, 20, Component.literal("Reload API"), b -> this.bsl$loadLiveCatalog(true)));
-		this.addRenderableWidget(this.bsl$makeButton(doneX, controlsY, 75, 20, Component.literal("Done"), b -> this.minecraft.setScreen(this.parent)));
+		this.previousPageButton = this.addRenderableWidget(this.bsl$makeButton(prevX, controlsY, 75, 20, Component.translatable("bsl.button.prev"), b -> this.bsl$changePage(-1)));
+		this.nextPageButton = this.addRenderableWidget(this.bsl$makeButton(nextX, controlsY, 75, 20, Component.translatable("bsl.button.next"), b -> this.bsl$changePage(1)));
+		this.addButton = this.addRenderableWidget(this.bsl$makeButton(addX, controlsY, 110, 20, Component.translatable("bsl.browser.add_selected"), b -> this.bsl$addSelectedServer()));
+		this.openWebsiteButton = this.addRenderableWidget(this.bsl$makeButton(websiteX, controlsY, 110, 20, Component.translatable("bsl.browser.open_website"), b -> this.bsl$openSelectedWebsite()));
+		this.refreshApiButton = this.addRenderableWidget(this.bsl$makeButton(reloadX, controlsY, 100, 20, Component.translatable("bsl.browser.reload_api"), b -> this.bsl$loadLiveCatalog(true)));
+		this.addRenderableWidget(this.bsl$makeButton(doneX, controlsY, 75, 20, Component.translatable("gui.done"), b -> this.minecraft.setScreen(this.parent)));
 
 		this.loadingLive = true;
-		this.statusMessage = "Loading live server catalog...";
+		this.statusMessage = Component.translatable("bsl.browser.status.loading_live");
 		this.bsl$refreshFilteredEntries();
 		this.bsl$loadLiveCatalog(false);
 	}
@@ -120,8 +120,8 @@ public final class ServerBrowserScreen extends Screen {
 		super.render(poseStack, mouseX, mouseY, partialTick);
 
 		drawCenteredString(poseStack, this.font, this.title, this.width / 2, 6, 0xFFFFFFFF);
-		drawString(poseStack, this.font, "Results: " + this.filteredEntries.size(), 10, this.height - 76, 0xFFA0A0A0);
-		if (!this.statusMessage.isEmpty()) {
+		drawString(poseStack, this.font, Component.translatable("bsl.browser.results", this.filteredEntries.size()), 10, this.height - 76, 0xFFA0A0A0);
+		if (this.statusMessage != null) {
 			drawString(poseStack, this.font, this.statusMessage, 10, this.height - 66, 0xFF80FF80);
 		}
 
@@ -154,7 +154,7 @@ public final class ServerBrowserScreen extends Screen {
 			drawString(poseStack, this.font, this.bsl$abbreviate(entry.name(), 38), rowX + 28, rowY + 6, 0xFFFFFFFF);
 			drawString(poseStack, this.font, this.bsl$abbreviate(entry.address(), 45), rowX + 28, rowY + 18, 0xFF9FA7B0);
 
-			String playersText = this.bsl$playersText(entry);
+			Component playersText = this.bsl$playersComponent(entry);
 			int playersColor = entry.players() > 0 ? 0xFF9DE27A : 0xFFA0A0A0;
 			drawString(poseStack, this.font, playersText, rowX + this.buttonWidth - 120, rowY + 12, playersColor);
 		}
@@ -179,7 +179,7 @@ public final class ServerBrowserScreen extends Screen {
 		this.fill(poseStack, iconX, iconY, iconX + 16, iconY + 16, lightAlpha | 0x00FFFFFF);
 
 		int textAlpha = ((int) (140 + pulse * 115.0f)) << 24;
-		drawCenteredString(poseStack, this.font, "Loading...", this.width / 2, iconY + 24, textAlpha | 0xD8C8FF);
+		drawCenteredString(poseStack, this.font, Component.translatable("bsl.browser.loading"), this.width / 2, iconY + 24, textAlpha | 0xD8C8FF);
 	}
 
 	private void bsl$drawLogo(PoseStack poseStack, int x, int y) {
@@ -213,7 +213,7 @@ public final class ServerBrowserScreen extends Screen {
 		this.fill(poseStack, x, y, x + 16, y + 16, fillColor);
 		this.fill(poseStack, x, y, x + 16, y + 1, borderColor);
 		this.fill(poseStack, x, y + 15, x + 16, y + 16, borderColor);
-		this.fill(poseStack, x, y, x + 1, y + 16, borderColor);
+		this.fill(poseStack, x, y + 1, y + 16, borderColor);
 		this.fill(poseStack, x + 15, y, x + 16, y + 16, borderColor);
 	}
 
@@ -247,8 +247,8 @@ public final class ServerBrowserScreen extends Screen {
 			if (cached != null) {
 				this.loadingLive = false;
 				this.statusMessage = cached.fromLiveApi()
-					? "Loaded " + cached.entries().size() + " servers from session cache."
-					: "Using cached bundled catalog from this session.";
+					? Component.translatable("bsl.browser.status.cache", cached.entries().size())
+					: Component.translatable("bsl.browser.status.bundled_cached");
 				this.allEntries.clear();
 				this.allEntries.addAll(cached.entries());
 				this.filteredEntries.clear();
@@ -263,7 +263,9 @@ public final class ServerBrowserScreen extends Screen {
 			this.refreshApiButton.active = false;
 		}
 		this.loadingLive = true;
-		this.statusMessage = forceRefresh ? "Reloading live server catalog..." : "Loading live server catalog...";
+		this.statusMessage = forceRefresh 
+			? Component.translatable("bsl.browser.status.reloading_live") 
+			: Component.translatable("bsl.browser.status.loading_live");
 		this.allEntries.clear();
 		this.filteredEntries.clear();
 		this.selected = null;
@@ -286,13 +288,13 @@ public final class ServerBrowserScreen extends Screen {
 			PublicServerCatalog.LoadResult safeResult;
 			if (throwable != null || result == null || result.entries() == null) {
 				safeResult = new PublicServerCatalog.LoadResult(PublicServerCatalog.loadBundled(this.minecraft.getResourceManager()), false);
-				this.statusMessage = "Live API unavailable. Showing bundled catalog.";
+				this.statusMessage = Component.translatable("bsl.browser.status.api_fallback");
 			} else {
 				safeResult = result;
 				if (safeResult.fromLiveApi()) {
-					this.statusMessage = "Loaded " + safeResult.entries().size() + " servers from live API.";
+					this.statusMessage = Component.translatable("bsl.browser.status.live_loaded", safeResult.entries().size());
 				} else {
-					this.statusMessage = "Live API unavailable. Showing bundled catalog.";
+					this.statusMessage = Component.translatable("bsl.browser.status.api_fallback");
 				}
 			}
 
@@ -368,7 +370,7 @@ public final class ServerBrowserScreen extends Screen {
 			return;
 		}
 		this.selected = this.filteredEntries.get(index);
-		this.statusMessage = "";
+		this.statusMessage = null;
 		this.bsl$refreshActionButtons();
 	}
 
@@ -390,7 +392,7 @@ public final class ServerBrowserScreen extends Screen {
 
 		ServerList serverList = this.parent.getServers();
 		if (this.bsl$containsServer(serverList, this.selected.address())) {
-			this.statusMessage = "Server already exists in your list.";
+			this.statusMessage = Component.translatable("bsl.browser.status.already_exists");
 			return;
 		}
 
@@ -403,7 +405,7 @@ public final class ServerBrowserScreen extends Screen {
 		serverList.save();
 		((JoinMultiplayerScreenInvoker) this.parent).bsl$refreshServerList();
 
-		this.statusMessage = "Added " + this.selected.name() + ".";
+		this.statusMessage = Component.translatable("bsl.browser.status.added", this.selected.name());
 	}
 
 	private void bsl$openSelectedWebsite() {
@@ -448,14 +450,14 @@ public final class ServerBrowserScreen extends Screen {
 		return true;
 	}
 
-	private String bsl$playersText(PublicServerCatalog.Entry entry) {
+	private Component bsl$playersComponent(PublicServerCatalog.Entry entry) {
 		if (entry.players() >= 0 && entry.maxPlayers() > 0) {
-			return "Players: " + entry.players() + "/" + entry.maxPlayers();
+			return Component.translatable("bsl.browser.players", entry.players(), entry.maxPlayers());
 		}
 		if (entry.players() >= 0) {
-			return "Players: " + entry.players();
+			return Component.translatable("bsl.browser.players_single", entry.players());
 		}
-		return "Players: --";
+		return Component.translatable("bsl.browser.players_unknown");
 	}
 
 	private String bsl$abbreviate(String value, int maxLength) {
@@ -465,5 +467,3 @@ public final class ServerBrowserScreen extends Screen {
 		return value.substring(0, maxLength - 3) + "...";
 	}
 }
-
-
