@@ -323,29 +323,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 	}
 
 	@Unique
-	private void bsl$cycleCategoryFilter() {
-		List<String> options = new ArrayList<>();
-		options.add("");
-		options.addAll(ServerMetadataStore.getKnownCategories());
-
-		if (options.isEmpty()) {
-			return;
-		}
-
-		int currentIndex = 0;
-		for (int i = 0; i < options.size(); i++) {
-			if (options.get(i).equalsIgnoreCase(this.bslActiveCategoryFilter)) {
-				currentIndex = i;
-				break;
-			}
-		}
-
-		int nextIndex = (currentIndex + 1) % options.size();
-		this.bslActiveCategoryFilter = options.get(nextIndex);
-		this.bsl$applyServerView(null);
-	}
-
-	@Unique
 	private void bsl$openCategoryDropdown() {
 		this.bsl$closeCategoryDropdown();
 
