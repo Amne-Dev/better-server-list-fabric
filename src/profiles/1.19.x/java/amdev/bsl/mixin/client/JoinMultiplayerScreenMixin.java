@@ -247,7 +247,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 			return;
 		}
 
-		// 【修復核心】：選中時依狀態動態讀取語言鍵
 		boolean favorite = ServerMetadataStore.isFavorite(selected.ip);
 		this.bslFavoriteButton.setMessage(Component.translatable(favorite ? "bsl.button.unfavorite" : "bsl.button.favorite"));
 		this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
