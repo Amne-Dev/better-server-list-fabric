@@ -275,7 +275,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 			return;
 		}
 
-		// 【修復核心】：選中時依最愛狀態正確套用翻譯鍵，不寫死 Unfav
 		boolean favorite = ServerMetadataStore.isFavorite(selected.ip);
 		this.bslFavoriteButton.setMessage(Component.translatable(favorite ? "bsl.button.unfavorite" : "bsl.button.favorite"));
 		this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
@@ -340,7 +339,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		);
 	}
 
-	// 【修復核心】：動態將 Component 當作參數傳給 category_filter 模板
 	@Unique
 	private Component bsl$getCategoryFilterLabel() {
 		Component inner = this.bslActiveCategoryFilter.isBlank()
