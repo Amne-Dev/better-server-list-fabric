@@ -38,7 +38,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public final class ServerBrowserScreen extends Screen {
-	private static final int PAGE_SIZE = 8;
 	private static final int ROW_HEIGHT = 36;
 	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
 		.followRedirects(HttpClient.Redirect.NORMAL)
@@ -60,7 +59,8 @@ public final class ServerBrowserScreen extends Screen {
 	private Button refreshApiButton;
 	private PublicServerCatalog.Entry selected;
 	private int currentPage;
-	private Component statusMessage = Component.empty();
+	private int pageSize = 6;
+	private Component statusMessage = null;
 	private int buttonX;
 	private int buttonWidth;
 	private int listTop;
@@ -70,7 +70,7 @@ public final class ServerBrowserScreen extends Screen {
 	private CompletableFuture<PublicServerCatalog.LoadResult> liveLoadFuture;
 
 	public ServerBrowserScreen(JoinMultiplayerScreen parent) {
-		super(Component.translatable("bsl.screen.browser.title"));
+		super(Component.translatable("bsl.browser.title"));
 		this.parent = parent;
 	}
 
@@ -84,14 +84,17 @@ public final class ServerBrowserScreen extends Screen {
 		this.loadingIcon = ItemStack.EMPTY;
 		this.nextLoadingIconRetryAt = 0L;
 
-		this.listTop = 46;
+		this.listTop = 44;
 		this.buttonWidth = Math.min(this.width - 20, Math.max(575, this.width - 40));
 		this.buttonX = (this.width - this.buttonWidth) / 2;
 
+		int availableHeight = this.height - this.listTop - 56;
+		this.pageSize = Math.max(1, availableHeight / ROW_HEIGHT);
+
 		this.searchField = this.addRenderableWidget(
-			new EditBox(this.font, this.buttonX, 18, this.buttonWidth, 20, Component.translatable("bsl.gui.search_servers"))
+			new EditBox(this.font, this.buttonX, 16, this.buttonWidth, 20, Component.translatable("bsl.browser.search_field"))
 		);
-		this.searchField.setHint(Component.translatable("bsl.gui.search_servers_hint"));
+		this.searchField.setHint(Component.translatable("bsl.browser.search_hint"));
 		this.searchField.setResponder(value -> {
 			this.currentPage = 0;
 			this.bsl$refreshFilteredEntries();
@@ -99,7 +102,7 @@ public final class ServerBrowserScreen extends Screen {
 		this.setInitialFocus(this.searchField);
 
 		this.resultButtons.clear();
-		for (int i = 0; i < PAGE_SIZE; i++) {
+		for (int i = 0; i < this.pageSize; i++) {
 			final int slot = i;
 			Button button = this.addRenderableWidget(
 				Button.builder(Component.empty(), b -> this.bsl$selectFromSlot(slot)).bounds(
@@ -112,7 +115,7 @@ public final class ServerBrowserScreen extends Screen {
 			this.resultButtons.add(button);
 		}
 
-		int controlsY = this.height - 54;
+		int controlsY = this.height - 30;
 		int prevX = this.buttonX;
 		int nextX = prevX + 80;
 		int addX = nextX + 80;
@@ -127,20 +130,20 @@ public final class ServerBrowserScreen extends Screen {
 			Button.builder(Component.translatable("bsl.button.next"), b -> this.bsl$changePage(1)).bounds(nextX, controlsY, 75, 20).build()
 		);
 		this.addButton = this.addRenderableWidget(
-			Button.builder(Component.translatable("bsl.button.add_selected"), b -> this.bsl$addSelectedServer()).bounds(addX, controlsY, 110, 20).build()
+			Button.builder(Component.translatable("bsl.browser.add_selected"), b -> this.bsl$addSelectedServer()).bounds(addX, controlsY, 110, 20).build()
 		);
 		this.openWebsiteButton = this.addRenderableWidget(
-			Button.builder(Component.translatable("bsl.button.open_website"), b -> this.bsl$openSelectedWebsite()).bounds(websiteX, controlsY, 110, 20).build()
+			Button.builder(Component.translatable("bsl.browser.open_website"), b -> this.bsl$openSelectedWebsite()).bounds(websiteX, controlsY, 110, 20).build()
 		);
 		this.refreshApiButton = this.addRenderableWidget(
-			Button.builder(Component.translatable("bsl.button.reload_api"), b -> this.bsl$loadLiveCatalog(true)).bounds(reloadX, controlsY, 100, 20).build()
+			Button.builder(Component.translatable("bsl.browser.reload_api"), b -> this.bsl$loadLiveCatalog(true)).bounds(reloadX, controlsY, 100, 20).build()
 		);
 		this.addRenderableWidget(
 			Button.builder(Component.translatable("gui.done"), b -> this.minecraft.setScreen(this.parent)).bounds(doneX, controlsY, 75, 20).build()
 		);
 
 		this.loadingLive = true;
-		this.statusMessage = Component.translatable("bsl.status.loading_live");
+		this.statusMessage = Component.translatable("bsl.browser.status.loading_live");
 		this.bsl$refreshFilteredEntries();
 		this.bsl$loadLiveCatalog(false);
 	}
@@ -157,10 +160,14 @@ public final class ServerBrowserScreen extends Screen {
 		guiGraphics.fill(0, 0, this.width, this.height, 0xB0101010);
 		super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-		guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 6, 0xFFFFFFFF);
-		guiGraphics.drawString(this.font, Component.translatable("bsl.screen.browser.results", this.filteredEntries.size()), 10, this.height - 76, 0xFFA0A0A0);
-		if (!this.statusMessage.getString().isBlank()) {
-			guiGraphics.drawString(this.font, this.statusMessage, 10, this.height - 66, 0xFF80FF80);
+		guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 4, 0xFFFFFFFF);
+		
+		int infoY = this.height - 42;
+		Component resultsComp = Component.translatable("bsl.browser.results", this.filteredEntries.size());
+		guiGraphics.drawString(this.font, resultsComp, this.buttonX, infoY, 0xFFA0A0A0);
+		if (this.statusMessage != null) {
+			int statusX = this.buttonX + this.font.width(resultsComp) + 12;
+			guiGraphics.drawString(this.font, this.statusMessage, statusX, infoY, 0xFF80FF80);
 		}
 
 		if (this.loadingLive) {
@@ -171,8 +178,8 @@ public final class ServerBrowserScreen extends Screen {
 	}
 
 	private void bsl$renderRows(GuiGraphics guiGraphics) {
-		int pageStart = this.currentPage * PAGE_SIZE;
-		for (int i = 0; i < PAGE_SIZE; i++) {
+		int pageStart = this.currentPage * this.pageSize;
+		for (int i = 0; i < this.pageSize; i++) {
 			int index = pageStart + i;
 			if (index < 0 || index >= this.filteredEntries.size()) {
 				continue;
@@ -202,7 +209,7 @@ public final class ServerBrowserScreen extends Screen {
 		float wave = (float) Math.sin((Util.getMillis() % 1600L) / 1600.0 * Math.PI * 2.0);
 		float pulse = (wave + 1.0f) * 0.5f;
 		int iconX = this.width / 2 - 8;
-		int iconY = this.listTop + PAGE_SIZE * ROW_HEIGHT / 2 - 8;
+		int iconY = this.listTop + this.pageSize * ROW_HEIGHT / 2 - 8;
 
 		ItemStack icon = this.bsl$getLoadingIcon();
 		if (!icon.isEmpty()) {
@@ -216,7 +223,7 @@ public final class ServerBrowserScreen extends Screen {
 		guiGraphics.fill(iconX, iconY, iconX + 16, iconY + 16, lightAlpha | 0x00FFFFFF);
 
 		int textAlpha = ((int) (140 + pulse * 115.0f)) << 24;
-		guiGraphics.drawCenteredString(this.font, Component.translatable("bsl.status.loading"), this.width / 2, iconY + 24, textAlpha | 0xD8C8FF);
+		guiGraphics.drawCenteredString(this.font, Component.translatable("bsl.browser.loading"), this.width / 2, iconY + 24, textAlpha | 0xD8C8FF);
 	}
 
 	private void bsl$drawLogo(GuiGraphics guiGraphics, PublicServerCatalog.Entry entry, int x, int y) {
@@ -271,7 +278,7 @@ public final class ServerBrowserScreen extends Screen {
 			}
 		}
 
-		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / PAGE_SIZE);
+		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / this.pageSize);
 		if (this.currentPage > maxPage) {
 			this.currentPage = maxPage;
 		}
@@ -291,8 +298,8 @@ public final class ServerBrowserScreen extends Screen {
 			if (cached != null) {
 				this.loadingLive = false;
 				this.statusMessage = cached.fromLiveApi()
-					? Component.translatable("bsl.status.loaded_cache", cached.entries().size())
-					: Component.translatable("bsl.status.loaded_cache_bundled");
+					? Component.translatable("bsl.browser.status.cache", cached.entries().size())
+					: Component.translatable("bsl.browser.status.bundled_cached");
 				this.allEntries.clear();
 				this.allEntries.addAll(cached.entries());
 				this.filteredEntries.clear();
@@ -308,8 +315,8 @@ public final class ServerBrowserScreen extends Screen {
 		}
 		this.loadingLive = true;
 		this.statusMessage = forceRefresh 
-			? Component.translatable("bsl.status.reloading_live") 
-			: Component.translatable("bsl.status.loading_live");
+			? Component.translatable("bsl.browser.status.reloading_live") 
+			: Component.translatable("bsl.browser.status.loading_live");
 		this.allEntries.clear();
 		this.filteredEntries.clear();
 		this.selected = null;
@@ -332,13 +339,13 @@ public final class ServerBrowserScreen extends Screen {
 			PublicServerCatalog.LoadResult safeResult;
 			if (throwable != null || result == null || result.entries() == null) {
 				safeResult = new PublicServerCatalog.LoadResult(PublicServerCatalog.loadBundled(this.minecraft.getResourceManager()), false);
-				this.statusMessage = Component.translatable("bsl.status.api_unavailable");
+				this.statusMessage = Component.translatable("bsl.browser.status.api_fallback");
 			} else {
 				safeResult = result;
 				if (safeResult.fromLiveApi()) {
-					this.statusMessage = Component.translatable("bsl.status.loaded_live", safeResult.entries().size());
+					this.statusMessage = Component.translatable("bsl.browser.status.live_loaded", safeResult.entries().size());
 				} else {
-					this.statusMessage = Component.translatable("bsl.status.api_unavailable");
+					this.statusMessage = Component.translatable("bsl.browser.status.api_fallback");
 				}
 			}
 
@@ -366,7 +373,7 @@ public final class ServerBrowserScreen extends Screen {
 			return;
 		}
 
-		int pageStart = this.currentPage * PAGE_SIZE;
+		int pageStart = this.currentPage * this.pageSize;
 		for (int i = 0; i < this.resultButtons.size(); i++) {
 			Button button = this.resultButtons.get(i);
 			int index = pageStart + i;
@@ -390,7 +397,7 @@ public final class ServerBrowserScreen extends Screen {
 			return;
 		}
 
-		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / PAGE_SIZE);
+		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / this.pageSize);
 		this.previousPageButton.active = this.currentPage > 0;
 		this.nextPageButton.active = this.currentPage < maxPage;
 
@@ -409,12 +416,12 @@ public final class ServerBrowserScreen extends Screen {
 			return;
 		}
 
-		int index = this.currentPage * PAGE_SIZE + slot;
+		int index = this.currentPage * this.pageSize + slot;
 		if (index < 0 || index >= this.filteredEntries.size()) {
 			return;
 		}
 		this.selected = this.filteredEntries.get(index);
-		this.statusMessage = Component.empty();
+		this.statusMessage = null;
 		this.bsl$refreshActionButtons();
 	}
 
@@ -423,7 +430,7 @@ public final class ServerBrowserScreen extends Screen {
 			return;
 		}
 
-		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / PAGE_SIZE);
+		int maxPage = Math.max(0, (this.filteredEntries.size() - 1) / this.pageSize);
 		this.currentPage = Math.max(0, Math.min(maxPage, this.currentPage + delta));
 		this.bsl$refreshResultButtons();
 		this.bsl$refreshActionButtons();
@@ -436,7 +443,7 @@ public final class ServerBrowserScreen extends Screen {
 
 		ServerList serverList = this.parent.getServers();
 		if (serverList.get(this.selected.address()) != null) {
-			this.statusMessage = Component.translatable("bsl.status.server_exists");
+			this.statusMessage = Component.translatable("bsl.browser.status.already_exists");
 			return;
 		}
 
@@ -449,7 +456,7 @@ public final class ServerBrowserScreen extends Screen {
 		serverList.save();
 		((JoinMultiplayerScreenInvoker) this.parent).bsl$refreshServerList();
 
-		this.statusMessage = Component.translatable("bsl.status.server_added", this.selected.name());
+		this.statusMessage = Component.translatable("bsl.browser.status.added", this.selected.name());
 	}
 
 	private void bsl$openSelectedWebsite() {
@@ -591,10 +598,10 @@ public final class ServerBrowserScreen extends Screen {
 
 	private Component bsl$playersComponent(PublicServerCatalog.Entry entry) {
 		if (entry.players() >= 0 && entry.maxPlayers() > 0) {
-			return Component.translatable("bsl.browser.players_max", entry.players(), entry.maxPlayers());
+			return Component.translatable("bsl.browser.players", entry.players(), entry.maxPlayers());
 		}
 		if (entry.players() >= 0) {
-			return Component.translatable("bsl.browser.players", entry.players());
+			return Component.translatable("bsl.browser.players_single", entry.players());
 		}
 		return Component.translatable("bsl.browser.players_unknown");
 	}
