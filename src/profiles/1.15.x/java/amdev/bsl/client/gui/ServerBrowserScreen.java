@@ -303,8 +303,8 @@ public final class ServerBrowserScreen extends Screen {
 			this.refreshApiButton.active = false;
 		}
 		this.loadingLive = true;
-		this.statusMessage = forceRefresh 
-			? new TranslatableComponent("bsl.browser.status.reloading_live") 
+		this.statusMessage = forceRefresh
+			? new TranslatableComponent("bsl.browser.status.reloading_live")
 			: new TranslatableComponent("bsl.browser.status.loading_live");
 		this.allEntries.clear();
 		this.filteredEntries.clear();
@@ -438,7 +438,8 @@ public final class ServerBrowserScreen extends Screen {
 
 		ServerData serverData = new ServerData(this.selected.name(), this.selected.address(), false);
 		serverList.add(serverData);
-		if (ServerMetadataStore.getCategory(serverData.ip).isEmpty() && !this.selected.category().isEmpty()) {
+		String existingCategory = ServerMetadataStore.getCategory(serverData.ip);
+		if ((existingCategory == null || existingCategory.isEmpty()) && !this.selected.category().isEmpty()) {
 			ServerMetadataStore.setCategory(serverData.ip, this.selected.category());
 		}
 		ServerOrdering.reorder(serverList);
@@ -462,7 +463,7 @@ public final class ServerBrowserScreen extends Screen {
 	}
 
 	private void bsl$ensureLogoTexture(PublicServerCatalog.Entry entry) {
-		if (entry.logoUrl().isBlank()) {
+		if (entry.logoUrl() == null || entry.logoUrl().trim().isEmpty()) {
 			return;
 		}
 
@@ -532,7 +533,6 @@ public final class ServerBrowserScreen extends Screen {
 			try {
 				payload = java.net.URLDecoder.decode(payload, StandardCharsets.UTF_8);
 			} catch (Exception ignored) {
-				// Keep original payload and try decode paths below.
 			}
 		}
 
@@ -648,7 +648,7 @@ public final class ServerBrowserScreen extends Screen {
 		this.fill(x, y, x + width, y + height, fillColor);
 		this.fill(x, y, x + width, y + 1, topBorderColor);
 		this.fill(x, y + height - 1, x + width, y + height, bottomBorderColor);
-		this.fill(x, y, x + 1, y + height, topBorderColor);
+		this.fill(x, y + 1, y + height, topBorderColor);
 		this.fill(x + width - 1, y, x + width, y + height, bottomBorderColor);
 
 		if (width > 2 && height > 2) {
