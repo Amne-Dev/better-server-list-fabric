@@ -28,7 +28,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 	}
 
 	private CategoryFilterSidebarScreen(Screen parent, String activeCategory, Consumer<String> onSelect, int page) {
-		super(Component.literal("Category Filter"));
+		super(Component.translatable("bsl.category.sidebar.title"));
 		this.parent = parent;
 		this.onSelect = onSelect;
 		this.activeCategory = activeCategory == null ? "" : activeCategory;
@@ -53,9 +53,9 @@ public final class CategoryFilterSidebarScreen extends Screen {
 
 		for (int i = from; i < to; i++) {
 			String option = options.get(i);
-			String label = this.bsl$formatOption(option);
+			Component buttonTitle = this.bsl$formatOptionComponent(option);
 			this.addRenderableWidget(
-				Button.builder(Component.literal(label), button -> this.bsl$selectAndClose(option))
+				Button.builder(buttonTitle, button -> this.bsl$selectAndClose(option))
 					.bounds(buttonX, y, buttonWidth, ROW_HEIGHT)
 					.build()
 			);
@@ -65,21 +65,21 @@ public final class CategoryFilterSidebarScreen extends Screen {
 		int navY = panelTop + panelHeight - FOOTER_HEIGHT;
 		int navWidth = (buttonWidth - PANEL_PADDING) / 2;
 		Button prevButton = this.addRenderableWidget(
-			Button.builder(Component.literal("< Prev"), button -> this.bsl$openPage(currentPage - 1))
+			Button.builder(Component.translatable("bsl.button.prev"), button -> this.bsl$openPage(currentPage - 1))
 				.bounds(buttonX, navY, navWidth, ROW_HEIGHT)
 				.build()
 		);
 		prevButton.active = currentPage > 0;
 
 		Button nextButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Next >"), button -> this.bsl$openPage(currentPage + 1))
+			Button.builder(Component.translatable("bsl.button.next"), button -> this.bsl$openPage(currentPage + 1))
 				.bounds(buttonX + navWidth + PANEL_PADDING, navY, navWidth, ROW_HEIGHT)
 				.build()
 		);
 		nextButton.active = currentPage < totalPages - 1;
 
 		this.addRenderableWidget(
-			Button.builder(Component.literal("Done"), button -> this.onClose())
+			Button.builder(Component.translatable("gui.done"), button -> this.onClose())
 				.bounds(buttonX, navY + ROW_HEIGHT + 4, buttonWidth, ROW_HEIGHT)
 				.build()
 		);
@@ -108,7 +108,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 		int listBottom = panelTop + panelHeight - FOOTER_HEIGHT + 2;
 		guiGraphics.fill(panelLeft + 2, listTop, panelLeft + PANEL_WIDTH - 2, listBottom, 0xFF101010);
 		guiGraphics.centeredText(this.font, this.title, panelLeft + PANEL_WIDTH / 2, panelTop + 8, 0xFFFFFFFF);
-		guiGraphics.text(this.font, "Select category", panelLeft + PANEL_PADDING, panelTop + 20, 0xFFA0A0A0);
+		guiGraphics.text(this.font, Component.translatable("bsl.category.sidebar.subtitle").getString(), panelLeft + PANEL_PADDING, panelTop + 20, 0xFFA0A0A0);
 		super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 	}
 
@@ -134,15 +134,24 @@ public final class CategoryFilterSidebarScreen extends Screen {
 		return Math.max(1, listHeight / (ROW_HEIGHT + ROW_GAP));
 	}
 
-	private String bsl$formatOption(String option) {
-		String value = option == null || option.isBlank() ? "All" : option;
-		if (value.length() > 22) {
-			value = value.substring(0, 19) + "...";
+	private Component bsl$formatOptionComponent(String option) {
+		String safeOption = option == null ? "" : option;
+		boolean isSelected = safeOption.equalsIgnoreCase(this.activeCategory) 
+			|| (safeOption.isBlank() && this.activeCategory.isBlank());
+
+		Component baseLabel = safeOption.isBlank() 
+			? Component.translatable("bsl.category.all") 
+			: Component.literal(this.bsl$abbreviate(safeOption, 19));
+
+		return isSelected 
+			? Component.translatable("bsl.category.selected_format", baseLabel) 
+			: baseLabel;
+	}
+
+	private String bsl$abbreviate(String value, int maxLength) {
+		if (value.length() <= maxLength) {
+			return value;
 		}
-		if (option == null) {
-			option = "";
-		}
-		boolean selected = option.equalsIgnoreCase(this.activeCategory) || (option.isBlank() && this.activeCategory.isBlank());
-		return selected ? "> " + value : value;
+		return value.substring(0, maxLength - 3) + "...";
 	}
 }
