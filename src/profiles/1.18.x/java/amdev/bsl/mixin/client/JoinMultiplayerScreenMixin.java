@@ -308,7 +308,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		}));
 	}
 
-	// 【修復核心】：使用 TranslatableComponent 包裝 Component，防止被刷回英文
 	@Unique
 	private Component bsl$getCategoryFilterLabel() {
 		Component inner = this.bslActiveCategoryFilter.isEmpty()
