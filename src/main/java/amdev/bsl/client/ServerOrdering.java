@@ -10,7 +10,7 @@ import net.minecraft.client.multiplayer.ServerList;
 public final class ServerOrdering {
 	private static final Comparator<ServerData> ORDER = Comparator
 		.comparing((ServerData serverData) -> !ServerMetadataStore.isFavorite(serverData.ip))
-		.thenComparing((ServerData serverData) -> ServerMetadataStore.getCategory(serverData.ip).isBlank())
+		.thenComparing((ServerData serverData) -> isCategoryEmpty(ServerMetadataStore.getCategory(serverData.ip)))
 		.thenComparing(
 			(ServerData serverData) -> normalize(ServerMetadataStore.getCategory(serverData.ip)),
 			String::compareTo
@@ -47,6 +47,10 @@ public final class ServerOrdering {
 		}
 	}
 
+	private static boolean isCategoryEmpty(String category) {
+		return category == null || category.trim().isEmpty();
+	}
+
 	private static String name(ServerData serverData) {
 		return serverData.name == null ? "" : serverData.name;
 	}
@@ -56,7 +60,7 @@ public final class ServerOrdering {
 	}
 
 	private static String normalize(String value) {
-		if (value == null || value.isBlank()) {
+		if (value == null || value.trim().isEmpty()) {
 			return "~";
 		}
 		return value.toLowerCase(Locale.ROOT);
