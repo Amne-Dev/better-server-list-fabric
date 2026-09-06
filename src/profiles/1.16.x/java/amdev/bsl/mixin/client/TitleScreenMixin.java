@@ -26,9 +26,10 @@ public abstract class TitleScreenMixin extends Screen {
 
 		String multiplayerLabel = new TranslatableComponent("menu.multiplayer").getString();
 		for (AbstractWidget widget : this.buttons) {
-			if (!(widget instanceof Button button)) {
+			if (!(widget instanceof Button)) {
 				continue;
 			}
+			Button button = (Button) widget;
 			if (!multiplayerLabel.equals(button.getMessage().getString())) {
 				continue;
 			}
