@@ -6,7 +6,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.TranslatableComponent;
 
 public final class CategoryEditScreen extends Screen {
 	private final Screen parent;
@@ -15,7 +15,7 @@ public final class CategoryEditScreen extends Screen {
 	private EditBox categoryField;
 
 	public CategoryEditScreen(Screen parent, String initialValue, Consumer<String> onSave) {
-		super(new TextComponent("Edit Category"));
+		super(new TranslatableComponent("bsl.screen.category_edit.title"));
 		this.parent = parent;
 		this.initialValue = initialValue == null ? "" : initialValue;
 		this.onSave = onSave;
@@ -27,14 +27,14 @@ public final class CategoryEditScreen extends Screen {
 		int centerX = this.width / 2;
 		int centerY = this.height / 2;
 
-		this.categoryField = this.addRenderableWidget(new EditBox(this.font, centerX - fieldWidth / 2, centerY - 10, fieldWidth, 20, new TextComponent("Category")));
+		this.categoryField = this.addRenderableWidget(new EditBox(this.font, centerX - fieldWidth / 2, centerY - 10, fieldWidth, 20, new TranslatableComponent("bsl.gui.category")));
 		this.categoryField.setMaxLength(32);
 		this.categoryField.setValue(this.initialValue);
 		this.categoryField.setFocus(true);
-	
-		this.addRenderableWidget(new Button(centerX - 155, centerY + 22, 100, 20, new TextComponent("Save"), button -> this.bsl$saveAndClose()));
-		this.addRenderableWidget(new Button(centerX - 50, centerY + 22, 100, 20, new TextComponent("Clear"), button -> this.bsl$clearAndClose()));
-		this.addRenderableWidget(new Button(centerX + 55, centerY + 22, 100, 20, new TextComponent("Cancel"), button -> this.minecraft.setScreen(this.parent)));
+
+		this.addRenderableWidget(new Button(centerX - 155, centerY + 22, 100, 20, new TranslatableComponent("bsl.button.save"), button -> this.bsl$saveAndClose()));
+		this.addRenderableWidget(new Button(centerX - 50, centerY + 22, 100, 20, new TranslatableComponent("bsl.button.clear"), button -> this.bsl$clearAndClose()));
+		this.addRenderableWidget(new Button(centerX + 55, centerY + 22, 100, 20, new TranslatableComponent("gui.cancel"), button -> this.minecraft.setScreen(this.parent)));
 	}
 
 	@Override
@@ -51,7 +51,7 @@ public final class CategoryEditScreen extends Screen {
 	public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
 		this.fill(poseStack, 0, 0, this.width, this.height, 0xB0101010);
 		drawCenteredString(poseStack, this.font, this.title, this.width / 2, this.height / 2 - 34, 0xFFFFFFFF);
-		drawCenteredString(poseStack, this.font, "Type any custom category name", this.width / 2, this.height / 2 - 22, 0xFFA0A0A0);
+		drawCenteredString(poseStack, this.font, new TranslatableComponent("bsl.screen.category_edit.hint"), this.width / 2, this.height / 2 - 22, 0xFFA0A0A0);
 		super.render(poseStack, mouseX, mouseY, partialTick);
 	}
 
@@ -65,4 +65,3 @@ public final class CategoryEditScreen extends Screen {
 		this.minecraft.setScreen(this.parent);
 	}
 }
-

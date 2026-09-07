@@ -27,7 +27,7 @@ public abstract class OnlineServerEntryMixin {
 
 		boolean favorite = ServerMetadataStore.isFavorite(this.serverData.ip);
 		String category = ServerMetadataStore.getCategory(this.serverData.ip);
-		if (!favorite && category.isEmpty()) {
+		if (!favorite && (category == null || category.isEmpty())) {
 			return;
 		}
 
@@ -35,7 +35,7 @@ public abstract class OnlineServerEntryMixin {
 			this.minecraft.font.draw("★", x + 3.0f, y + 10.0f, 0xFFFFDD55);
 		}
 
-		if (!category.isEmpty()) {
+		if (category != null && !category.isEmpty()) {
 			String categoryLabel = '[' + this.bsl$abbreviate(category, 14) + ']';
 			int labelWidth = this.minecraft.font.width(categoryLabel);
 			int nameStartX = x + 35;

@@ -28,7 +28,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 	}
 
 	private CategoryFilterSidebarScreen(Screen parent, String activeCategory, Consumer<String> onSelect, int page) {
-		super(Component.literal("Category Filter"));
+		super(Component.translatable("bsl.screen.category_filter.title"));
 		this.parent = parent;
 		this.onSelect = onSelect;
 		this.activeCategory = activeCategory == null ? "" : activeCategory;
@@ -65,21 +65,21 @@ public final class CategoryFilterSidebarScreen extends Screen {
 		int navY = panelTop + panelHeight - FOOTER_HEIGHT;
 		int navWidth = (buttonWidth - PANEL_PADDING) / 2;
 		Button prevButton = this.addRenderableWidget(
-			Button.builder(Component.literal("< Prev"), button -> this.bsl$openPage(currentPage - 1))
+			Button.builder(Component.translatable("bsl.button.prev"), button -> this.bsl$openPage(currentPage - 1))
 				.bounds(buttonX, navY, navWidth, ROW_HEIGHT)
 				.build()
 		);
 		prevButton.active = currentPage > 0;
 
 		Button nextButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Next >"), button -> this.bsl$openPage(currentPage + 1))
+			Button.builder(Component.translatable("bsl.button.next"), button -> this.bsl$openPage(currentPage + 1))
 				.bounds(buttonX + navWidth + PANEL_PADDING, navY, navWidth, ROW_HEIGHT)
 				.build()
 		);
 		nextButton.active = currentPage < totalPages - 1;
 
 		this.addRenderableWidget(
-			Button.builder(Component.literal("Done"), button -> this.onClose())
+			Button.builder(Component.translatable("gui.done"), button -> this.onClose())
 				.bounds(buttonX, navY + ROW_HEIGHT + 4, buttonWidth, ROW_HEIGHT)
 				.build()
 		);
@@ -108,7 +108,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 		int listBottom = panelTop + panelHeight - FOOTER_HEIGHT + 2;
 		guiGraphics.fill(panelLeft + 2, listTop, panelLeft + PANEL_WIDTH - 2, listBottom, 0xFF101010);
 		guiGraphics.drawCenteredString(this.font, this.title, panelLeft + PANEL_WIDTH / 2, panelTop + 8, 0xFFFFFFFF);
-		guiGraphics.drawString(this.font, "Select category", panelLeft + PANEL_PADDING, panelTop + 20, 0xFFA0A0A0);
+		guiGraphics.drawString(this.font, Component.translatable("bsl.screen.category_filter.subtitle"), panelLeft + PANEL_PADDING, panelTop + 20, 0xFFA0A0A0);
 		super.render(guiGraphics, mouseX, mouseY, partialTick);
 	}
 
@@ -135,7 +135,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 	}
 
 	private String bsl$formatOption(String option) {
-		String value = option == null || option.isBlank() ? "All" : option;
+		String value = option == null || option.isBlank() ? Component.translatable("bsl.category.all").getString() : option;
 		if (value.length() > 22) {
 			value = value.substring(0, 19) + "...";
 		}

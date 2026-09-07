@@ -16,6 +16,8 @@ import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.TranslatableComponent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -100,14 +102,14 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		int searchWidth = Math.max(140, availableWidth - buttonsTotalWidth - BSL_CONTROL_GAP);
 		int buttonX = BSL_MARGIN + searchWidth + BSL_CONTROL_GAP;
 
-		this.bslSearchBox = this.addButton(new EditBox(this.minecraft.font, BSL_MARGIN, BSL_TOP_Y, searchWidth, BSL_CONTROL_HEIGHT, "Search"));
-		this.bslSearchBox.setSuggestion("Search servers");
+		this.bslSearchBox = this.addButton(new EditBox(this.minecraft.font, BSL_MARGIN, BSL_TOP_Y, searchWidth, BSL_CONTROL_HEIGHT, new TranslatableComponent("bsl.gui.search").getColoredString()));
+		this.bslSearchBox.setSuggestion(new TranslatableComponent("bsl.gui.search_hint").getColoredString());
 		this.bslSearchBox.setResponder(value -> this.bsl$applyServerView(null));
 
-		this.bslFavoriteButton = this.addButton(new Button(buttonX, BSL_TOP_Y, favoriteWidth, BSL_CONTROL_HEIGHT, "Fav", button -> this.bsl$toggleFavorite()));
-		this.bslCategoryButton = this.addButton(new Button(buttonX + favoriteWidth + BSL_CONTROL_GAP, BSL_TOP_Y, categoryWidth, BSL_CONTROL_HEIGHT, "Category", button -> this.bsl$openCategoryEditor()));
-		this.bslFindServersButton = this.addButton(new Button(buttonX + favoriteWidth + categoryWidth + BSL_CONTROL_GAP * 2, BSL_TOP_Y, findWidth, BSL_CONTROL_HEIGHT, "Find", button -> this.bsl$openServerBrowser()));
-		this.bslCategoryFilterButton = this.addButton(new Button(buttonX + favoriteWidth + categoryWidth + findWidth + BSL_CONTROL_GAP * 3, BSL_TOP_Y, filterWidth, BSL_CONTROL_HEIGHT, "Show: All v", button -> this.bsl$toggleCategoryDropdown()));
+		this.bslFavoriteButton = this.addButton(new Button(buttonX, BSL_TOP_Y, favoriteWidth, BSL_CONTROL_HEIGHT, new TranslatableComponent("bsl.button.favorite").getColoredString(), button -> this.bsl$toggleFavorite()));
+		this.bslCategoryButton = this.addButton(new Button(buttonX + favoriteWidth + BSL_CONTROL_GAP, BSL_TOP_Y, categoryWidth, BSL_CONTROL_HEIGHT, new TranslatableComponent("bsl.button.category").getColoredString(), button -> this.bsl$openCategoryEditor()));
+		this.bslFindServersButton = this.addButton(new Button(buttonX + favoriteWidth + categoryWidth + BSL_CONTROL_GAP * 2, BSL_TOP_Y, findWidth, BSL_CONTROL_HEIGHT, new TranslatableComponent("bsl.button.find").getColoredString(), button -> this.bsl$openServerBrowser()));
+		this.bslCategoryFilterButton = this.addButton(new Button(buttonX + favoriteWidth + categoryWidth + findWidth + BSL_CONTROL_GAP * 3, BSL_TOP_Y, filterWidth, BSL_CONTROL_HEIGHT, this.bsl$getCategoryFilterLabel(), button -> this.bsl$toggleCategoryDropdown()));
 
 		this.bslCategoryFilterX = this.bslCategoryFilterButton.x;
 		this.bslCategoryFilterY = this.bslCategoryFilterButton.y + BSL_CONTROL_HEIGHT;
@@ -132,6 +134,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		this.bsl$closeCategoryDropdown();
 		ServerMetadataStore.save();
 	}
+
 	@Unique
 	private void bsl$toggleFavorite() {
 		ServerData selected = this.bsl$getSelectedServerData();
@@ -237,15 +240,15 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		this.bslFindServersButton.active = true;
 
 		if (!hasSelection) {
-			this.bslFavoriteButton.setMessage("Fav");
-			this.bslCategoryButton.setMessage("Category");
+			this.bslFavoriteButton.setMessage(new TranslatableComponent("bsl.button.favorite").getColoredString());
+			this.bslCategoryButton.setMessage(new TranslatableComponent("bsl.button.category").getColoredString());
 			this.bsl$updateCategoryFilterButton();
 			return;
 		}
 
 		boolean favorite = ServerMetadataStore.isFavorite(selected.ip);
-		this.bslFavoriteButton.setMessage((favorite ? "Unfav" : "Fav"));
-		this.bslCategoryButton.setMessage("Category");
+		this.bslFavoriteButton.setMessage(new TranslatableComponent(favorite ? "bsl.button.unfavorite" : "bsl.button.favorite").getColoredString());
+		this.bslCategoryButton.setMessage(new TranslatableComponent("bsl.button.category").getColoredString());
 		this.bsl$updateCategoryFilterButton();
 	}
 
@@ -300,40 +303,23 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		this.bsl$closeCategoryDropdown();
 		this.minecraft.setScreen(new CategoryFilterSidebarScreen((JoinMultiplayerScreen) (Object) this, this.bslActiveCategoryFilter, category -> {
 			this.bslActiveCategoryFilter = category == null ? "" : category;
-			
+			this.bsl$applyServerView(null);
 		}));
 	}
 
 	@Unique
-	private void bsl$updateCategoryFilterButton() {
-		if (this.bslCategoryFilterButton == null) {
-			return;
-		}
-		String label = this.bslActiveCategoryFilter.isEmpty() ? "All" : this.bsl$abbreviate(this.bslActiveCategoryFilter, 8);
-		this.bslCategoryFilterButton.setMessage(("Show: " + label + " v"));
+	private String bsl$getCategoryFilterLabel() {
+		Component inner = this.bslActiveCategoryFilter.isEmpty()
+			? new TranslatableComponent("bsl.category.all")
+			: new TextComponent(this.bsl$abbreviate(this.bslActiveCategoryFilter, 8));
+		return new TranslatableComponent("bsl.button.category_filter", inner).getColoredString();
 	}
 
 	@Unique
-	private void bsl$cycleCategoryFilter() {
-		List<String> options = new ArrayList<>();
-		options.add("");
-		options.addAll(ServerMetadataStore.getKnownCategories());
-
-		if (options.isEmpty()) {
-			return;
+	private void bsl$updateCategoryFilterButton() {
+		if (this.bslCategoryFilterButton != null) {
+			this.bslCategoryFilterButton.setMessage(this.bsl$getCategoryFilterLabel());
 		}
-
-		int currentIndex = 0;
-		for (int i = 0; i < options.size(); i++) {
-			if (options.get(i).equalsIgnoreCase(this.bslActiveCategoryFilter)) {
-				currentIndex = i;
-				break;
-			}
-		}
-
-		int nextIndex = (currentIndex + 1) % options.size();
-		this.bslActiveCategoryFilter = options.get(nextIndex);
-		
 	}
 
 	@Unique
@@ -346,7 +332,9 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 		int y = Math.max(8, this.bslCategoryFilterY - options.size() * 20);
 		for (String option : options) {
-			String label = option.isEmpty() ? "All" : this.bsl$abbreviate(option, 16);
+			String label = option.isEmpty()
+				? new TranslatableComponent("bsl.category.all").getColoredString()
+				: this.bsl$abbreviate(option, 16);
 			Button optionButton = this.addButton(new Button(this.bslCategoryFilterX, y, this.bslCategoryFilterWidth, 20, label, button -> this.bsl$setCategoryFilter(option)));
 			this.bslCategoryDropdownButtons.add(optionButton);
 			y += 20;
@@ -385,7 +373,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 		int controlsBottom = this.bslCategoryFilterButton == null
 			? BSL_TOP_Y + BSL_CONTROL_HEIGHT
-			: this.bslCategoryFilterButton.y + BSL_CONTROL_HEIGHT;
+			: this.bslCategoryFilterButton.y + this.bslCategoryFilterButton.getHeight();
 		int top = Math.max(48, controlsBottom + BSL_LIST_TOP_GAP);
 		this.serverSelectionList.updateSize(this.width, this.height, top, this.height - BSL_LIST_BOTTOM_PADDING);
 	}
@@ -407,5 +395,3 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		return null;
 	}
 }
-
-

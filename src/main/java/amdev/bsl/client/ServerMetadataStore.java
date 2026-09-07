@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import net.fabricmc.loader.api.FabricLoader;
 
 public final class ServerMetadataStore {
@@ -79,7 +80,7 @@ public final class ServerMetadataStore {
 			.filter(value -> !value.isEmpty())
 			.distinct()
 			.sorted(String.CASE_INSENSITIVE_ORDER)
-			.toList();
+			.collect(Collectors.toList());
 	}
 
 	public static synchronized void save() {
@@ -100,7 +101,8 @@ public final class ServerMetadataStore {
 
 		try {
 			Files.createDirectories(FILE.getParent());
-			Files.writeString(FILE, GSON.toJson(root), StandardCharsets.UTF_8);
+			byte[] bytes = GSON.toJson(root).getBytes(StandardCharsets.UTF_8);
+			Files.write(FILE, bytes);
 		} catch (IOException exception) {
 			BetterServerList.LOGGER.error("Failed to save server metadata to {}", FILE, exception);
 		}
@@ -120,9 +122,9 @@ public final class ServerMetadataStore {
 		}
 
 		try {
-			String content = Files.readString(FILE, StandardCharsets.UTF_8);
-			JsonElement parsed = new JsonParser().parse(content);
-			if (!parsed.isJsonObject()) {
+			String content = new String(Files.readAllBytes(FILE), StandardCharsets.UTF_8);
+			JsonElement parsed = bsl$parseJson(content);
+			if (parsed == null || !parsed.isJsonObject()) {
 				return;
 			}
 			JsonObject root = parsed.getAsJsonObject();
@@ -153,6 +155,14 @@ public final class ServerMetadataStore {
 			}
 		} catch (Exception exception) {
 			BetterServerList.LOGGER.error("Failed to load server metadata from {}", FILE, exception);
+		}
+	}
+
+	private static JsonElement bsl$parseJson(String json) {
+		try {
+			return new JsonParser().parse(json);
+		} catch (Exception ignored) {
+			return null;
 		}
 	}
 

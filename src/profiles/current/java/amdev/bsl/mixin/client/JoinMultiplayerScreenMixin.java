@@ -114,21 +114,21 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 			this.repositionElements();
 		}
 
-		this.bslSearchBox = this.addRenderableWidget(new EditBox(this.minecraft.font, 8, 8, 180, BSL_CONTROL_HEIGHT, Component.literal("Search")));
-		this.bslSearchBox.setHint(Component.literal("Search servers"));
+		this.bslSearchBox = this.addRenderableWidget(new EditBox(this.minecraft.font, 8, 8, 180, BSL_CONTROL_HEIGHT, Component.translatable("bsl.gui.search")));
+		this.bslSearchBox.setHint(Component.translatable("bsl.gui.search_hint"));
 		this.bslSearchBox.setResponder(value -> this.bsl$applyServerView(null));
 
 		this.bslFavoriteButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Fav"), button -> this.bsl$toggleFavorite()).bounds(8, 8, 100, BSL_CONTROL_HEIGHT).build()
+			Button.builder(Component.translatable("bsl.button.favorite"), button -> this.bsl$toggleFavorite()).bounds(8, 8, 100, BSL_CONTROL_HEIGHT).build()
 		);
 		this.bslCategoryButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Category"), button -> this.bsl$openCategoryEditor()).bounds(8, 8, 120, BSL_CONTROL_HEIGHT).build()
+			Button.builder(Component.translatable("bsl.button.category"), button -> this.bsl$openCategoryEditor()).bounds(8, 8, 120, BSL_CONTROL_HEIGHT).build()
 		);
 		this.bslFindServersButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Find"), button -> this.bsl$openServerBrowser()).bounds(8, 8, 110, BSL_CONTROL_HEIGHT).build()
+			Button.builder(Component.translatable("bsl.button.find"), button -> this.bsl$openServerBrowser()).bounds(8, 8, 110, BSL_CONTROL_HEIGHT).build()
 		);
 		this.bslCategoryFilterButton = this.addRenderableWidget(
-			Button.builder(Component.literal("Show: All"), button -> this.bsl$toggleCategoryDropdown()).bounds(8, 8, 120, BSL_CONTROL_HEIGHT).build()
+			Button.builder(this.bsl$getCategoryFilterLabel(), button -> this.bsl$toggleCategoryDropdown()).bounds(8, 8, 120, BSL_CONTROL_HEIGHT).build()
 		);
 		this.bsl$layoutWidgets();
 		this.bsl$applyServerView(null);
@@ -144,7 +144,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		if (this.width != this.bslLastLayoutWidth || this.height != this.bslLastLayoutHeight) {
 			this.bsl$layoutWidgets();
 		}
-		if (this.bslPendingFilterApply && this.minecraft != null && this.minecraft.gui.screen() == (Object) this) {
+		if (this.bslPendingFilterApply && this.minecraft != null) {
 			this.bslPendingFilterApply = false;
 			this.bsl$applyServerView(null);
 		}
@@ -165,6 +165,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		this.bsl$closeCategoryDropdown();
 		ServerMetadataStore.save();
 	}
+
 	@Unique
 	private void bsl$toggleFavorite() {
 		ServerData selected = this.bsl$getSelectedServerData();
@@ -265,19 +266,18 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		boolean hasSelection = selected != null;
 		this.bslFavoriteButton.active = hasSelection;
 		this.bslCategoryButton.active = hasSelection;
+		this.bslFindServersButton.active = true;
 
 		if (!hasSelection) {
-			this.bslFavoriteButton.setMessage(Component.literal("Fav"));
-			this.bslCategoryButton.setMessage(Component.literal("Category"));
-			this.bslFindServersButton.active = true;
+			this.bslFavoriteButton.setMessage(Component.translatable("bsl.button.favorite"));
+			this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
 			this.bsl$updateCategoryFilterButton();
 			return;
 		}
 
 		boolean favorite = ServerMetadataStore.isFavorite(selected.ip);
-		this.bslFavoriteButton.setMessage(Component.literal(favorite ? "Unfav" : "Fav"));
-		this.bslCategoryButton.setMessage(Component.literal("Category"));
-		this.bslFindServersButton.active = true;
+		this.bslFavoriteButton.setMessage(Component.translatable(favorite ? "bsl.button.unfavorite" : "bsl.button.favorite"));
+		this.bslCategoryButton.setMessage(Component.translatable("bsl.button.category"));
 		this.bsl$updateCategoryFilterButton();
 	}
 
@@ -334,17 +334,24 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 			new CategoryFilterSidebarScreen((JoinMultiplayerScreen) (Object) this, this.bslActiveCategoryFilter, category -> {
 				this.bslActiveCategoryFilter = category == null ? "" : category;
 				this.bslPendingFilterApply = true;
+				this.bsl$applyServerView(null);
 			})
 		);
 	}
 
 	@Unique
+	private Component bsl$getCategoryFilterLabel() {
+		Component inner = this.bslActiveCategoryFilter.isBlank()
+			? Component.translatable("bsl.category.all")
+			: Component.literal(this.bsl$abbreviate(this.bslActiveCategoryFilter, 8));
+		return Component.translatable("bsl.button.category_filter", inner);
+	}
+
+	@Unique
 	private void bsl$updateCategoryFilterButton() {
-		if (this.bslCategoryFilterButton == null) {
-			return;
+		if (this.bslCategoryFilterButton != null) {
+			this.bslCategoryFilterButton.setMessage(this.bsl$getCategoryFilterLabel());
 		}
-		String label = this.bslActiveCategoryFilter.isBlank() ? "All" : this.bsl$abbreviate(this.bslActiveCategoryFilter, 8);
-		this.bslCategoryFilterButton.setMessage(Component.literal("Show: " + label + " v"));
 	}
 
 	@Unique
@@ -357,9 +364,11 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 		int y = Math.max(8, this.bslCategoryFilterY - options.size() * 20);
 		for (String option : options) {
-			String label = option.isBlank() ? "All" : this.bsl$abbreviate(option, 16);
+			Component labelComp = option.isBlank()
+				? Component.translatable("bsl.category.all")
+				: Component.literal(this.bsl$abbreviate(option, 16));
 			Button optionButton = this.addRenderableWidget(
-				Button.builder(Component.literal(label), button -> this.bsl$setCategoryFilter(option))
+				Button.builder(labelComp, button -> this.bsl$setCategoryFilter(option))
 					.bounds(this.bslCategoryFilterX, y, this.bslCategoryFilterWidth, 20)
 					.build()
 			);
@@ -448,7 +457,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 	@Unique
 	private void bsl$setBounds(AbstractWidget widget, int x, int y, int width, int height) {
-		widget.setSize(width, height);
+		widget.setWidth(width);
 		widget.setX(x);
 		widget.setY(y);
 	}

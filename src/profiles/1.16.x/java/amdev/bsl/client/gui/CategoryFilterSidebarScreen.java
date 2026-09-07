@@ -7,7 +7,9 @@ import java.util.List;
 import java.util.function.Consumer;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.TranslatableComponent;
 
 public final class CategoryFilterSidebarScreen extends Screen {
 	private static final int PANEL_MARGIN = 8;
@@ -28,7 +30,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 	}
 
 	private CategoryFilterSidebarScreen(Screen parent, String activeCategory, Consumer<String> onSelect, int page) {
-		super(new TextComponent("Category Filter"));
+		super(new TranslatableComponent("bsl.screen.category_filter.title"));
 		this.parent = parent;
 		this.onSelect = onSelect;
 		this.activeCategory = activeCategory == null ? "" : activeCategory;
@@ -53,20 +55,20 @@ public final class CategoryFilterSidebarScreen extends Screen {
 
 		for (int i = from; i < to; i++) {
 			String option = options.get(i);
-			String label = this.bsl$formatOption(option);
+			Component label = this.bsl$formatOption(option);
 			this.bsl$createSidebarButton(buttonX, y, buttonWidth, ROW_HEIGHT, label, button -> this.bsl$selectAndClose(option));
 			y += ROW_HEIGHT + ROW_GAP;
 		}
 
 		int navY = panelTop + panelHeight - FOOTER_HEIGHT;
 		int navWidth = (buttonWidth - PANEL_PADDING) / 2;
-		Button prevButton = this.bsl$createSidebarButton(buttonX, navY, navWidth, ROW_HEIGHT, "< Prev", button -> this.bsl$openPage(currentPage - 1));
+		Button prevButton = this.bsl$createSidebarButton(buttonX, navY, navWidth, ROW_HEIGHT, new TranslatableComponent("bsl.button.prev"), button -> this.bsl$openPage(currentPage - 1));
 		prevButton.active = currentPage > 0;
 
-		Button nextButton = this.bsl$createSidebarButton(buttonX + navWidth + PANEL_PADDING, navY, navWidth, ROW_HEIGHT, "Next >", button -> this.bsl$openPage(currentPage + 1));
+		Button nextButton = this.bsl$createSidebarButton(buttonX + navWidth + PANEL_PADDING, navY, navWidth, ROW_HEIGHT, new TranslatableComponent("bsl.button.next"), button -> this.bsl$openPage(currentPage + 1));
 		nextButton.active = currentPage < totalPages - 1;
 
-		this.bsl$createSidebarButton(buttonX, navY + ROW_HEIGHT + 4, buttonWidth, ROW_HEIGHT, "Done", button -> this.onClose());
+		this.bsl$createSidebarButton(buttonX, navY + ROW_HEIGHT + 4, buttonWidth, ROW_HEIGHT, new TranslatableComponent("gui.done"), button -> this.onClose());
 	}
 
 	@Override
@@ -92,7 +94,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 		int listBottom = panelTop + panelHeight - FOOTER_HEIGHT + 2;
 		this.fill(poseStack, panelLeft + 2, listTop, panelLeft + PANEL_WIDTH - 2, listBottom, 0xF0101010);
 		drawCenteredString(poseStack, this.font, this.title, panelLeft + PANEL_WIDTH / 2, panelTop + 8, 0xFFFFFFFF);
-		drawString(poseStack, this.font, "Select category", panelLeft + PANEL_PADDING, panelTop + 20, 0xFFA0A0A0);
+		drawString(poseStack, this.font, new TranslatableComponent("bsl.screen.category_filter.hint").getString(), panelLeft + PANEL_PADDING, panelTop + 20, 0xFFA0A0A0);
 		super.render(poseStack, mouseX, mouseY, partialTick);
 	}
 
@@ -105,8 +107,8 @@ public final class CategoryFilterSidebarScreen extends Screen {
 		this.minecraft.setScreen(this.parent);
 	}
 
-	private Button bsl$createSidebarButton(int x, int y, int width, int height, String label, Button.OnPress onPress) {
-		Button button = new Button(x, y, width, height, new TextComponent(label), onPress) {
+	private Button bsl$createSidebarButton(int x, int y, int width, int height, Component label, Button.OnPress onPress) {
+		Button button = new Button(x, y, width, height, label, onPress) {
 			@Override
 			public void renderButton(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
 				boolean hovered = this.isHovered;
@@ -115,7 +117,7 @@ public final class CategoryFilterSidebarScreen extends Screen {
 				CategoryFilterSidebarScreen.this.drawCenteredString(
 					poseStack,
 					CategoryFilterSidebarScreen.this.font,
-					label,
+					this.getMessage(),
 					this.x + this.width / 2,
 					this.y + (this.height - 8) / 2,
 					textColor
@@ -154,15 +156,16 @@ public final class CategoryFilterSidebarScreen extends Screen {
 		return Math.max(1, listHeight / (ROW_HEIGHT + ROW_GAP));
 	}
 
-	private String bsl$formatOption(String option) {
-		String value = option == null || option.isEmpty() ? "All" : option;
-		if (value.length() > 22) {
-			value = value.substring(0, 19) + "...";
+	private Component bsl$formatOption(String option) {
+		boolean isAll = option == null || option.isEmpty();
+		String baseText = isAll ? new TranslatableComponent("bsl.category.all").getString() : option;
+		if (baseText.length() > 22) {
+			baseText = baseText.substring(0, 19) + "...";
 		}
 		if (option == null) {
 			option = "";
 		}
 		boolean selected = option.equalsIgnoreCase(this.activeCategory) || (option.isEmpty() && this.activeCategory.isEmpty());
-		return selected ? "> " + value : value;
+		return new TextComponent(selected ? "> " + baseText : baseText);
 	}
 }

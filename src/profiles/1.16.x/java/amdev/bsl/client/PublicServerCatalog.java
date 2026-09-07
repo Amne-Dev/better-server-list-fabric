@@ -8,7 +8,6 @@ import com.google.gson.JsonParser;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -21,9 +20,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -39,15 +37,18 @@ public final class PublicServerCatalog {
 		.followRedirects(HttpClient.Redirect.NORMAL)
 		.connectTimeout(Duration.ofSeconds(LIVE_REQUEST_TIMEOUT_SECONDS))
 		.build();
-	private static final List<Entry> FALLBACK = List.of(
-		new Entry("Hypixel", "mc.hypixel.net", "Popular minigames and PvP modes.", "Minigames", "https://hypixel.net", List.of("pvp", "skyblock", "bedwars"), -1, -1, "https://api.mcsrvstat.us/icon/mc.hypixel.net"),
-		new Entry("CubeCraft", "play.cubecraft.net", "Fast-paced competitive minigames.", "Minigames", "https://www.cubecraft.net", List.of("minigames", "eggwars"), -1, -1, "https://api.mcsrvstat.us/icon/play.cubecraft.net"),
-		new Entry("Mineplex", "us.mineplex.com", "Classic arcade server with mixed game modes.", "Arcade", "https://www.mineplex.com", List.of("arcade", "party"), -1, -1, "https://api.mcsrvstat.us/icon/us.mineplex.com"),
-		new Entry("The Hive", "play.hivemc.com", "Social and competitive minigames.", "Minigames", "https://playhive.com", List.of("bedrock", "minigames"), -1, -1, "https://api.mcsrvstat.us/icon/play.hivemc.com")
-	);
 	private static volatile LoadResult sessionCachedLoadResult;
 
 	private PublicServerCatalog() {
+	}
+
+	public static List<Entry> getFallbackEntries() {
+		return List.of(
+			new Entry("Hypixel", "mc.hypixel.net", new TranslatableComponent("bsl.server.hypixel.desc").getString(), "Minigames", "https://hypixel.net", List.of("pvp", "skyblock", "bedwars"), -1, -1, "https://api.mcsrvstat.us/icon/mc.hypixel.net"),
+			new Entry("CubeCraft", "play.cubecraft.net", new TranslatableComponent("bsl.server.cubecraft.desc").getString(), "Minigames", "https://www.cubecraft.net", List.of("minigames", "eggwars"), -1, -1, "https://api.mcsrvstat.us/icon/play.cubecraft.net"),
+			new Entry("Mineplex", "us.mineplex.com", new TranslatableComponent("bsl.server.mineplex.desc").getString(), "Arcade", "https://www.mineplex.com", List.of("arcade", "party"), -1, -1, "https://api.mcsrvstat.us/icon/us.mineplex.com"),
+			new Entry("The Hive", "play.hivemc.com", new TranslatableComponent("bsl.server.hive.desc").getString(), "Minigames", "https://playhive.com", List.of("bedrock", "minigames"), -1, -1, "https://api.mcsrvstat.us/icon/play.hivemc.com")
+		);
 	}
 
 	public static CompletableFuture<LoadResult> loadPreferredAsync(ResourceManager resourceManager) {
@@ -82,13 +83,13 @@ public final class PublicServerCatalog {
 
 	public static List<Entry> loadBundled(ResourceManager resourceManager) {
 		if (resourceManager == null) {
-			return FALLBACK;
+			return getFallbackEntries();
 		}
 
 		try (Resource resource = resourceManager.getResource(RESOURCE_ID); Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
 			JsonElement root = bsl$parseJson(reader);
 			if (root == null || !root.isJsonArray()) {
-				return FALLBACK;
+				return getFallbackEntries();
 			}
 
 			List<Entry> entries = new ArrayList<>();
@@ -103,10 +104,10 @@ public final class PublicServerCatalog {
 				}
 			}
 
-			return entries.isEmpty() ? FALLBACK : entries;
+			return entries.isEmpty() ? getFallbackEntries() : entries;
 		} catch (Exception exception) {
 			BetterServerList.LOGGER.warn("Failed to load bundled public server catalog, using fallback list.", exception);
-			return FALLBACK;
+			return getFallbackEntries();
 		}
 	}
 
@@ -200,7 +201,7 @@ public final class PublicServerCatalog {
 		}
 
 		JsonObject object = root.getAsJsonObject();
-		for (String key : List.of("servers", "data", "results", "items")) {
+		for (String key : List.of("servers", "data", "results", "items", "member")) {
 			JsonElement element = object.get(key);
 			if (element != null && element.isJsonArray()) {
 				return element.getAsJsonArray();
@@ -357,29 +358,27 @@ public final class PublicServerCatalog {
 		}
 	}
 
-	private static String buildDescription(String status, int players, int maxPlayers) {
+	private static String buildDescription(String statusKey, int players, int maxPlayers) {
+		String localizedStatus = "online".equalsIgnoreCase(statusKey)
+			? new TranslatableComponent("bsl.status.online").getString()
+			: ("offline".equalsIgnoreCase(statusKey)
+				? new TranslatableComponent("bsl.status.offline").getString()
+				: new TranslatableComponent("bsl.status.unknown").getString());
+
 		if (players > 0 && maxPlayers > 0) {
-			return "Status: " + (status.isEmpty() ? "unknown" : status) + " | Players: " + players + "/" + maxPlayers;
+			return new TranslatableComponent("bsl.description.status_players_max", localizedStatus, players, maxPlayers).getString();
 		}
 		if (players > 0) {
-			return "Status: " + (status.isEmpty() ? "unknown" : status) + " | Players: " + players;
+			return new TranslatableComponent("bsl.description.status_players", localizedStatus, players).getString();
 		}
-		if (!status.isEmpty()) {
-			return "Status: " + status;
+		if (!statusKey.isEmpty()) {
+			return new TranslatableComponent("bsl.description.status_only", localizedStatus).getString();
 		}
 		return "";
 	}
 
 	private static int bsl$sortablePlayers(Entry entry) {
 		return Math.max(entry.players(), 0);
-	}
-
-	private static JsonElement bsl$parseJson(String json) {
-		try {
-			return new JsonParser().parse(json);
-		} catch (Exception ignored) {
-			return null;
-		}
 	}
 
 	private static JsonElement bsl$parseJson(Reader reader) {
