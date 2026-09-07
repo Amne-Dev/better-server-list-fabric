@@ -235,7 +235,7 @@ public final class PublicServerCatalog {
 		}
 
 		JsonObject object = root.getAsJsonObject();
-		for (String key : List.of("servers", "data", "results", "items")) {
+		for (String key : List.of("servers", "data", "results", "items", "member")) {
 			JsonElement element = object.get(key);
 			if (element != null && element.isJsonArray()) {
 				return element.getAsJsonArray();
