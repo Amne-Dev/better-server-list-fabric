@@ -3,6 +3,7 @@ package amdev.bsl.mixin.client;
 import amdev.bsl.client.ServerMetadataStore;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
 import net.minecraft.client.multiplayer.ServerData;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,8 +21,8 @@ public abstract class OnlineServerEntryMixin {
 	@Shadow
 	private Minecraft minecraft;
 
-	@Inject(method = "render", at = @At("TAIL"))
-	private void bsl$renderServerTags(GuiGraphics guiGraphics, int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean hovered, float partialTick, CallbackInfo ci) {
+	@Inject(method = "renderContent", at = @At("TAIL"))
+	private void bsl$renderServerTags(GuiGraphics guiGraphics, int x, int y, boolean hovered, float partialTick, CallbackInfo ci) {
 		if (this.serverData == null || this.serverData.ip == null) {
 			return;
 		}
@@ -32,20 +33,25 @@ public abstract class OnlineServerEntryMixin {
 			return;
 		}
 
+		ObjectSelectionList.Entry<?> entry = (ObjectSelectionList.Entry<?>) (Object) this;
+		int rowX = entry.getContentX();
+		int rowY = entry.getContentY();
+		int rowRight = entry.getContentRight();
+
 		if (favorite) {
-			guiGraphics.drawString(this.minecraft.font, "★", x + 3, y + 10, 0xFFFFDD55, false);
+			guiGraphics.drawString(this.minecraft.font, "★", rowX + 3, rowY + 10, 0xFFFFDD55, false);
 		}
 
 		if (!category.isBlank()) {
 			String categoryLabel = '[' + this.bsl$abbreviate(category, 14) + ']';
 			int labelWidth = this.minecraft.font.width(categoryLabel);
-			int nameStartX = x + 35;
+			int nameStartX = rowX + 35;
 			int nameWidth = this.minecraft.font.width(this.serverData.name == null ? "" : this.serverData.name);
 			int preferredX = nameStartX + Math.min(nameWidth + 6, 170);
-			int maxX = x + entryWidth - 40 - labelWidth;
+			int maxX = rowRight - 40 - labelWidth;
 			if (maxX >= nameStartX + 8) {
 				int labelX = Math.max(nameStartX + 8, Math.min(preferredX, maxX));
-				guiGraphics.drawString(this.minecraft.font, categoryLabel, labelX, y + 1, 0xFFFFD070, false);
+				guiGraphics.drawString(this.minecraft.font, categoryLabel, labelX, rowY + 1, 0xFFFFD070, false);
 			}
 		}
 	}
