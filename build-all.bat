@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
-set "PROFILES=current 1.21.11 1.21.x 1.20.x 1.19.x 1.18.x 1.17.x 1.16.x 1.15.x"
+set "PROFILES=current 1.21 1.21.1 1.21.2 1.21.3 1.21.4 1.21.5 1.21.6 1.21.7 1.21.8 1.21.9 1.21.10 1.21.11 1.21.x 1.20.x 1.19.x 1.18.x 1.17.x 1.16.x 1.15.x"
 set "DIST_DIR=dist\publish"
 set "BASE_PATH=%PATH%"
 set "ACTIVE_JAVA_HOME="
