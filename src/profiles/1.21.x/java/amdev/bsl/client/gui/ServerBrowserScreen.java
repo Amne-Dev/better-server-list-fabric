@@ -269,7 +269,7 @@ public final class ServerBrowserScreen extends Screen {
 		guiGraphics.fill(x, y, x + 16, y + 16, fillColor);
 		guiGraphics.fill(x, y, x + 16, y + 1, borderColor);
 		guiGraphics.fill(x, y + 15, x + 16, y + 16, borderColor);
-		guiGraphics.fill(x, y + 1, y + 16, borderColor);
+		guiGraphics.fill(x, y + 1, x + 16, y + 16, borderColor);
 		guiGraphics.fill(x + 15, y, x + 16, y + 16, borderColor);
 	}
 
