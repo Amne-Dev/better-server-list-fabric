@@ -63,6 +63,17 @@ base {
 repositories {
 }
 
+loom {
+	if (loomMode == "remap") {
+		mixin {
+			useLegacyMixinAp = true
+			defaultRefmapName = "better-server-list.refmap.json"
+		}
+	} else {
+		mixin.defaultRefmapName = "better-server-list.refmap.json"
+	}
+}
+
 sourceSets {
 	main {
 		if (profileJavaDir.exists()) {
