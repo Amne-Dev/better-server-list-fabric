@@ -51,7 +51,8 @@ if (mixinCompatibilityLevel.isBlank()) {
 	throw new GradleException("Missing required property 'mixin_compatibility_level' in ${profileFile}")
 }
 def profileTag = mcProfile.replaceAll("[^A-Za-z0-9._-]", "-")
-def profileJavaDir = file("src/profiles/${mcProfile}/java")
+def sourceProfile = profileProperties.getProperty("source_profile", mcProfile).trim()
+def profileJavaDir = file("src/profiles/${sourceProfile}/java")
 
 version = mcProfile == "current" ? project.mod_version : "${project.mod_version}+${profileTag}"
 group = project.maven_group
