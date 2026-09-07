@@ -8,12 +8,9 @@ import amdev.bsl.client.gui.ServerBrowserScreen;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.layouts.FrameLayout;
-import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
@@ -41,9 +38,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 	@Shadow
 	protected abstract void onSelectedChange();
-
-	@Shadow
-	private HeaderAndFooterLayout layout;
 
 	@Unique
 	private Button bslFavoriteButton;
@@ -107,13 +101,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
 	@Inject(method = "init", at = @At("TAIL"))
 	private void bsl$addCategoryButtons(CallbackInfo ci) {
-		this.bsl$removeVanillaTitleFromHeader();
-
-		if (this.layout != null && this.layout.getHeaderHeight() < BSL_HEADER_HEIGHT) {
-			this.layout.setHeaderHeight(BSL_HEADER_HEIGHT);
-			this.repositionElements();
-		}
-
 		this.bslSearchBox = this.addRenderableWidget(new EditBox(this.minecraft.font, 8, 8, 180, BSL_CONTROL_HEIGHT, Component.translatable("bsl.gui.search")));
 		this.bslSearchBox.setHint(Component.translatable("bsl.gui.search_hint"));
 		this.bslSearchBox.setResponder(value -> this.bsl$applyServerView(null));
@@ -132,11 +119,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		);
 		this.bsl$layoutWidgets();
 		this.bsl$applyServerView(null);
-	}
-
-	@Inject(method = "repositionElements", at = @At("TAIL"))
-	private void bsl$repositionCustomWidgets(CallbackInfo ci) {
-		this.bsl$layoutWidgets();
 	}
 
 	@Inject(method = "tick", at = @At("TAIL"))
@@ -479,24 +461,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 		int top = Math.max(48, controlsBottom + BSL_LIST_TOP_GAP);
 		int contentHeight = Math.max(80, this.height - BSL_LIST_BOTTOM_PADDING - top);
 		this.serverSelectionList.updateSizeAndPosition(this.width, contentHeight, top);
-	}
-
-	@Unique
-	private void bsl$removeVanillaTitleFromHeader() {
-		if (this.layout == null) {
-			return;
-		}
-
-		FrameLayout headerFrame = ((HeaderAndFooterLayoutAccessor) (Object) this.layout).bsl$getHeaderFrame();
-		List<?> children = ((FrameLayoutAccessor) (Object) headerFrame).bsl$getChildren();
-		children.removeIf(container -> {
-			try {
-				Object child = container.getClass().getField("child").get(container);
-				return child instanceof StringWidget;
-			} catch (Exception ignored) {
-				return false;
-			}
-		});
 	}
 
 	@Unique

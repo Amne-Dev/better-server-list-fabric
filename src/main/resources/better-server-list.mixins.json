@@ -1,6 +1,7 @@
 {
 	"required": true,
 	"package": "amdev.bsl.mixin",
+	"refmap": "better-server-list.refmap.json",
 	"compatibilityLevel": "${mixin_compatibility_level}",
 	"mixins": [],
 	"client": [

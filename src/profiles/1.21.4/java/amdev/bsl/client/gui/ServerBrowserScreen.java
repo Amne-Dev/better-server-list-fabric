@@ -27,7 +27,6 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -232,7 +231,7 @@ public final class ServerBrowserScreen extends Screen {
 		String key = this.bsl$logoKey(entry.address());
 		ResourceLocation identifier = this.logoTextures.get(key);
 		if (identifier != null) {
-			guiGraphics.blit(RenderPipelines.GUI_TEXTURED, identifier, x, y, 0.0f, 0.0f, 16, 16, 16, 16);
+			this.bsl$renderFallbackIcon(guiGraphics, x, y, false);
 			return;
 		}
 
@@ -491,12 +490,7 @@ public final class ServerBrowserScreen extends Screen {
 				}
 
 				try {
-					ResourceLocation textureId = ResourceLocation.fromNamespaceAndPath("better-server-list", "server_logo/" + Integer.toUnsignedString(key.hashCode()));
-					DynamicTexture texture = new DynamicTexture(() -> "bsl_logo_" + key, image);
-					texture.upload();
-					this.minecraft.getTextureManager().register(textureId, texture);
-					this.logoTextures.put(key, textureId);
-					this.registeredTextures.add(textureId);
+					image.close();
 				} catch (Exception exception) {
 					image.close();
 				}
